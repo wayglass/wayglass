@@ -1,0 +1,23 @@
+# Demo policy for Wayglass. Copy to .wayglass/policy.yaml (wayglass init does
+# this for you). Rules are checked top to bottom; the first enforcing rule that
+# matches decides. A rule with `shadow: true` is logged, never enforced.
+version: 1
+classify:
+  area:
+    docs: ["docs/**", "**/*.md"]
+    web: ["web/**"]
+    auth: ["**/auth/**", "**/login*"]
+    infra: ["worker/wrangler.jsonc", ".github/**"]
+  data_class:
+    secrets: { content: ["(?i)api[_-]?key", "art_v[0-9]+_([a-z]+_)?[0-9a-f]{40}"] }
+    pii: { content: ["(?i)\\bssn\\b", "(?i)date_of_birth"] }
+  risk:
+    high: { lines_changed_over: 400 }
+rules:
+  - { when: { data_class: secrets }, action: block, reason: "Secrets never land." }
+  - { when: { area: infra }, action: multi_approve, approvers: 2, reason: "Infra changes affect everyone." }
+  - { when: { area: auth }, action: human_approve, reason: "Auth is a security boundary." }
+  - { when: { jurisdiction: eu, data_class: pii }, action: quarantine, reason: "EU personal data needs DPO review." }  # fires on the eu demo namespace
+  - { when: { area: docs, risk: low }, action: auto_merge, reason: "Routine docs change." }
+  - { when: { risk: low }, action: agent_review, reason: "Low risk; second agent checks intent vs diff." }
+default: { action: human_approve, reason: "No rule matched; a person decides." }

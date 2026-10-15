@@ -1,0 +1,84 @@
+# Acme Shop policy: Zero Trust for code changes.
+#
+# Every change is classified by area (which files), data class (what the
+# added lines contain), risk (how big) and jurisdiction (where the repo
+# lives), and the first enforcing rule that matches decides. No agent is
+# trusted by name: the same agent's docs fix auto-merges and its auth change
+# waits for a person. A change sent to a reviewer agent must be approved by
+# a different model family than the one that wrote it.
+#
+# `area` matches when ANY changed file is in the area: use it for strict
+# rules. `only_area` matches when EVERY changed file is: use it for
+# permissive rules, so a README edit cannot carry billing code past review.
+version: 1
+classify:
+  area:
+    docs: ["docs/**", "**/*.md"]
+    tests: ["**/*_test.go", "**/testdata/**"]
+    auth: ["internal/auth/**"]
+    billing: ["internal/billing/**"]
+    infra: ["infra/**", ".github/**", "Dockerfile"]
+    web: ["web/**"]
+    app: ["cmd/**", "internal/**", "go.mod", "go.sum"]
+  data_class:
+    secrets:
+      content:
+        - "pl_(live|test)_[0-9a-f]{32}"                # Paylane API keys
+        - "-----BEGIN [A-Z ]*PRIVATE KEY-----"
+        - "AKIA[0-9A-Z]{16}"                           # AWS access key IDs
+      paths: ["**/.env", "**/*.pem", "**/.dev.vars"]
+    pii:
+      content:
+        - "(?i)\\bdate_?of_?birth\\b|\\bbirth_?date\\b|\\bdob\\b"
+        - "(?i)\\bvat_?(number|id)\\b|\\btax_?id\\b|\\bnational_?id\\b"
+        - "(?i)\\b(iban|passport_?(number|no))\\b"
+        - "(?i)\\bphone_?(number)?\\b|\\bstreet_?address\\b"
+  risk:
+    medium: { lines_changed_over: 400, files_changed_over: 15 }
+    high: { lines_changed_over: 1000, files_changed_over: 40 }
+rules:
+  - name: no-secrets
+    when: { data_class: secrets }
+    action: block
+    reason: "Secrets never land in the repo; use wrangler secret or the environment."
+  - name: infra-two-people
+    when: { area: infra }
+    action: multi_approve
+    approvers: 2
+    reason: "Infrastructure changes affect every customer; two people approve."
+  - name: auth-boundary
+    when: { area: auth }
+    action: human_approve
+    reason: "Sign-in is a security boundary; a person approves."
+  - name: eu-personal-data
+    when: { jurisdiction: eu, data_class: pii }
+    action: quarantine
+    reason: "New personal data on the EU repo needs a data protection review first."
+  - name: personal-data
+    when: { data_class: pii }
+    action: human_approve
+    reason: "New personal data; a person checks it is needed."
+  - name: billing-money
+    when: { area: billing }
+    action: human_approve
+    reason: "Billing moves money; a person approves."
+  - name: docs-only
+    when: { only_area: docs, risk: [low, medium] }
+    action: auto_merge
+    reason: "Every file is documentation."
+  - name: trial-tests-auto-merge
+    when: { only_area: tests, risk: low }
+    action: auto_merge
+    reason: "Trial: let small tests-only changes merge without review."
+    mode: shadow
+  - name: tests-only
+    when: { only_area: tests }
+    action: agent_review
+    reviewer: { different_family: true }
+    reason: "Tests only; a reviewer from another model family checks they test what they claim."
+  - name: routine-app
+    when: { only_area: [app, web, tests, docs], risk: low }
+    action: agent_review
+    reviewer: { different_family: true }
+    reason: "Small app change outside sensitive areas; a reviewer from another model family checks intent against diff."
+default: { action: human_approve, reason: "No rule matched; a person decides." }

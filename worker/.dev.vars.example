@@ -1,0 +1,7 @@
+# Copy to .dev.vars (git-ignored) for `npx wrangler dev`. Never commit real values.
+# Placeholder admin key until `wayglass login` issues per-agent session tokens.
+WAYGLASS_ADMIN_KEY=change-me-local-only
+# Optional (D12): lets POST /v1/projects subscribe new trunks to push events.
+# Token permission: Account > Queues > Edit only. Leave unset to skip.
+# CF_ACCOUNT_ID=
+# CF_EVENTS_API_TOKEN=

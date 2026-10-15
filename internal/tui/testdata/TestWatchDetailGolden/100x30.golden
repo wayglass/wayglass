@@ -1,0 +1,30 @@
+ ◆ wayglass  watch  │ acme-web │ US · EU │ ▲ 3 waiting for a person                    SAMPLE DATA  
+ agents 5 · open intents 4 of 6 · overlaps 1 · last event 48s ago · time saved ≈30m est.            
+╭─ Intents 6 · 4 open ─────────────────╮╭─ Intent i3f2a91c0d1 ─────────────────────────────────────╮
+│ ▸ i3f2a91  Add rate limi…  proposed  ││ Add rate limiting to login                               │
+│   i0c9d8e  Store date of…  proposed  ││ claude-1 · proposed · fork acme-web--i3f2a91c0d1 · decl… │
+│   i7b4e0d  Pin Worker co…  proposed  ││ Why: Credential stuffing spikes seen in last week's      │
+│   i5a6b7c  Refactor sess…  open      ││ logs.                                                    │
+│   i1a2b3c  Document the …  landed    ││                                                          │
+│   i9e8d7c  Tidy header s…  landed    ││ PATHS  declared against pushed                           │
+│                                      ││ PATH                    DECLARED  PUSHED     NOTE        │
+│                                      ││ web/login.ts            yes       yes        ⇄ overlap   │
+│                                      ││ web/middleware/**       yes       1 file(s)              │
+│                                      ││ web/middleware/rateli…  via glob  yes                    │
+│                                      ││                                                          │
+│                                      ││ CHANGE  tags as classified                               │
+│                                      ││ area auth,web · data class - · risk low · jurisdiction … │
+│                                      ││ human by rule auth-needs-human · ▲ needs a person        │
+│                                      ││ Rule's reason: Auth is a security boundary.              │
+╰──────────────────────────────────────╯╰────────────────────────────────────────── ↓ more · pgdn ─╯
+╭─ Activity 26 ──────────────────────────────────╮╭─ Overlaps 1 ───────────────────────────────────╮
+│ 09:00:08  codex-2         i7b4e0d proposed 7b… ││ ⇄ i3f2a91 ↔ i5a6b7c on web/login.ts            │
+│ 09:00:08  policy          i7b4e0d multi_appro… ││   → land i3f2a91 first, i5a6b7c lands after it │
+│ 09:00:09  maya            i7b4e0d approval 1 … │╰────────────── re-planned, not failed at merge ─╯
+│ 09:00:10  codex-1         i9e8d7c pushed 1 fi… │╭─ Policy 5 decisions ───────────────────────────╮
+│ 09:00:10  codex-1         i9e8d7c proposed 9e… ││ auto-merge 1      agent review 1               │
+│ 09:00:10  policy          i9e8d7c agent_revie… ││ human 1           multi-approve 1              │
+│ 09:00:12  agent:reviewer  i9e8d7c agent revie… ││ quarantine 1      block 0                      │
+│ 09:00:12  agent:reviewer  i9e8d7c landed on t… ││                                                │
+╰────────────────────────────────────────────────╯╰────────────────────────────────────────────────╯
+ ↓ more  esc back · ↑/k up · ↓/j down · pgdn scroll down · ? keys · q quit         updated 09:01:00 

@@ -1,0 +1,11 @@
+# Reviewed on 2026-10-05. Exceptions require both the exact path and example value.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "SHA-256 commitment from the evaluation report, not private key material"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''(^|/)evals/rewrite/reports/diagnostic\-b46b1c3/commitments\.json$''']
+regexTarget = "match"
+regexes = ['''13996e78dfb8517737c0fae23a5bb126690f6a5ed0e57ce178f92a88e8f9c831''']

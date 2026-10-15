@@ -1,0 +1,20 @@
+ ◆ wayglass  watch  │ acme-web │ US · EU       SAMPLE DATA  
+ agents 5 open 4 of 6 overlaps 1 last 48s ago saved ≈30m e… 
+╭─ Intents 6 · 4 open ─────────────────────────────────────╮
+│   ID       AGENT      GOAL           DECL/PSH  STATUS    │
+│ ▸ i3f2a91  claude-1   Add rate lim…  ⇄ 2/2     proposed  │
+│   i0c9d8e  claude-2   Store date o…  2/2       proposed  │
+│   i7b4e0d  codex-2    Pin Worker c…  1/1       proposed  │
+│   i5a6b7c  claude-3   Refactor ses…  ⇄ 2/0     open      │
+╰─────────────────────────────────────────────── 1–4 of 6 ─╯
+╭─ Changes 5 · ▲ 3 wait for a person ──────────────────────╮
+│ INTENT   AREA·DATA·RISK·JUR    ACTION        RULE    ST… │
+│ i7b4e0d  infra·-·low·US        multi         infra…  ▲ … │
+│ i0c9d8e  web·pii·low·EU        quarantine    eu-pi…  ▲ … │
+│ i3f2a91  auth,web·-·low·US     human         auth-…  ▲ … │
+╰───────────────────────────────────────────────── 3 of 5 ─╯
+ ⇄ i3f2a91 ↔ i5a6b7c  web/login.ts  → land i3f2a91 first, i…
+╭─ Activity 26 ────────────────────────────────────────────╮
+│ 09:00:12  agent:reviewer  i9e8d7c landed on trunk        │
+╰──────────────────────────────────────────────────────────╯
+ ↑/k up · ↓/j down · enter intent detail…  updated 09:01:00 

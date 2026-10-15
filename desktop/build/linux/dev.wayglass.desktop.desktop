@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Wayglass
+Comment=Monitor agents and decide the changes routed to you
+Exec=wayglass-desktop
+Icon=wayglass-desktop
+Terminal=false
+Categories=Development;
+StartupWMClass=wayglass-desktop

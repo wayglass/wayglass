@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "skills": {
+    "avoid-ai-writing": {
+      "source": "coversheets/avoid-ai-writing-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "9a362d97aad6970a344aa11ff6a5c850ab6222b3c81c80362be26186034e884b"
+    },
+    "charmed-bubbles": {
+      "source": "tpscloud/charmedimsure-skill",
+      "sourceType": "github",
+      "skillPath": "skills/charmed-bubbles/SKILL.md",
+      "computedHash": "66501f5b315012b6a122f9795d81cbed41ae76a27a1e55586cd2933b01abd86e"
+    },
+    "charmed-bubbletea": {
+      "source": "tpscloud/charmedimsure-skill",
+      "sourceType": "github",
+      "skillPath": "skills/charmed-bubbletea/SKILL.md",
+      "computedHash": "dff34099e2882cc1a80fa4edf97865787faca170efdcc77b67c11db6d02b05f8"
+    },
+    "charmed-ecosystem": {
+      "source": "tpscloud/charmedimsure-skill",
+      "sourceType": "github",
+      "skillPath": "skills/charmed-ecosystem/SKILL.md",
+      "computedHash": "b123e30c44b87a1ad12adbd671d17be4e1fc00c92c200bbc2920434f7f4cf473"
+    },
+    "charmed-glamour": {
+      "source": "tpscloud/charmedimsure-skill",
+      "sourceType": "github",
+      "skillPath": "skills/charmed-glamour/SKILL.md",
+      "computedHash": "4f535268f298381697d6708ae60e97d9c3f830346b2eb84150e4d1cdceeeb8e5"
+    },
+    "charmed-huh": {
+      "source": "tpscloud/charmedimsure-skill",
+      "sourceType": "github",
+      "skillPath": "skills/charmed-huh/SKILL.md",
+      "computedHash": "ded116e0b46c6a07fdb67246c8cecd8d856ec9a0659cab5ea0adaece6eec3197"
+    },
+    "charmed-lipgloss": {
+      "source": "tpscloud/charmedimsure-skill",
+      "sourceType": "github",
+      "skillPath": "skills/charmed-lipgloss/SKILL.md",
+      "computedHash": "33d7d800bd35ae4586a34877e1b9d1b1724836b5a02371cc396e1a91d907ce2b"
+    },
+    "charmed-log": {
+      "source": "tpscloud/charmedimsure-skill",
+      "sourceType": "github",
+      "skillPath": "skills/charmed-log/SKILL.md",
+      "computedHash": "4470ea1f618407eba29e6bd5a5e6d8a603e253a0f040b489a009364968c05959"
+    },
+    "charmed-vhs": {
+      "source": "tpscloud/charmedimsure-skill",
+      "sourceType": "github",
+      "skillPath": "skills/charmed-vhs/SKILL.md",
+      "computedHash": "2eb7a63daac91deb7808f6bcdae9a299ab9a0a51e1ae47c7c526643edaee71a5"
+    },
+    "cloudflare": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/cloudflare/SKILL.md",
+      "computedHash": "51522c6fbd95a2eaa9631a7651ba3ef434fcc92d9573c64eb28ef723290b6099"
+    },
+    "cloudflare-artifacts": {
+      "source": "tpscloud/flared",
+      "sourceType": "github",
+      "skillPath": "skills/cloudflare-artifacts/SKILL.md",
+      "computedHash": "501799f68abb993e7a78269a8f6b08c83890ce1cd7e13ea3a81ff90aa7c6a925"
+    },
+    "cobra": {
+      "source": "tpscloud/gophers",
+      "sourceType": "github",
+      "skillPath": "skills/cobra/SKILL.md",
+      "computedHash": "b05bbe1d87c2b2ac6d0a5016b6a0edd653ae717a89fd5c120331893c4cd52523"
+    },
+    "durable-objects": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/durable-objects/SKILL.md",
+      "computedHash": "f328205f9d11381902a160ace4622cd1ac9602acba00b091f6d63f59a6869900"
+    },
+    "humanizer": {
+      "source": "blader/humanizer",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "fa4ffac562a8e7349282f606391ede22d23118e998dc8b5ac931662fa734c1b7"
+    },
+    "use-modern-go": {
+      "source": "coversheets/go-modern-guidelines-skill",
+      "sourceType": "github",
+      "skillPath": "plugin/skills/use-modern-go/SKILL.md",
+      "computedHash": "c308fc949fc8a369b5ea0f2d57072789eda8d05f420b972c67576b285b7ba539"
+    },
+    "wails2": {
+      "source": "tpscloud/gophers",
+      "sourceType": "github",
+      "skillPath": "skills/wails2/SKILL.md",
+      "computedHash": "b2e2f434037af9321e3bc55d52dbe4ee58a80f8ff259b6cea30363db64859d52"
+    },
+    "workers-best-practices": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/workers-best-practices/SKILL.md",
+      "computedHash": "e12970301753ed7eaa5ca375d4b98e0e36c9554e8f2809cb4b543c2ea7d9b4b8"
+    },
+    "wrangler": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/wrangler/SKILL.md",
+      "computedHash": "9b410cfe14c41d3d4ace5d42e2e19f4eb96104c659b5ed45abf341db28d81029"
+    }
+  }
+}

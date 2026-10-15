@@ -1,0 +1,23 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Writing review and editing",
+      "skills": [
+        "avoid-ai-writing",
+        "avoid-ai-writing-router",
+        "voice-preserving-rewriter",
+        "file-edit-in-place"
+      ]
+    },
+    {
+      "title": "Detection and verification",
+      "skills": [
+        "ai-writing-detector",
+        "false-positive-reviewer",
+        "preservation-verifier"
+      ]
+    }
+  ]
+}

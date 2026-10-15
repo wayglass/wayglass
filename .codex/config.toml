@@ -1,0 +1,15 @@
+# Project-scoped MCP servers for Codex. Codex reads this file only when the
+# project is trusted. Keep in sync with .mcp.json (Claude Code).
+
+# Cloudflare developer docs. Public, no auth.
+[mcp_servers.cloudflare-docs]
+url = "https://docs.mcp.cloudflare.com/mcp"
+
+# Cloudflare API (search/execute over the whole API). OAuth: run
+# `codex mcp login cloudflare-api`. Never store an API token here.
+[mcp_servers.cloudflare-api]
+url = "https://mcp.cloudflare.com/mcp"
+
+# Astro docs. Public, no auth.
+[mcp_servers.astro-docs]
+url = "https://mcp.docs.astro.build/mcp"

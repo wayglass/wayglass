@@ -1,0 +1,222 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+# Actions are pinned to commit SHAs (the tag is in the comment); see ci.yml.
+#
+# A tag publishes the CLI archives (cli), the Linux desktop tar.gz
+# (desktop-linux), unsigned Windows desktop ZIPs (desktop-windows), and the notarized macOS
+# app and CLI binaries (desktop-mac). Without the secrets the mac job is skipped and a maintainer
+# uploads a locally signed build before publishing the draft: docs/RELEASING.md, "Desktop".
+
+jobs:
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+      - run: go vet ./...
+      - name: Build archives and checksums
+        env:
+          VERSION: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+        run: make release-dry-run
+      - name: Verify the installer on the runner
+        run: sh scripts/test-install.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: cli
+          path: |
+            dist/wayglass_*.tar.gz
+            dist/wayglass_windows_*.zip
+            dist/checksums.txt
+          if-no-files-found: error
+
+  desktop-linux:
+    # Ubuntu 24.04 ships WebKitGTK 4.1; the script builds with -tags webkit2_41.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: GTK and WebKitGTK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-3-dev libwebkit2gtk-4.1-dev
+      - name: Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+      - name: Build and package
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: sh scripts/desktop-release.sh linux
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-linux
+          path: dist/desktop/
+          if-no-files-found: error
+
+  desktop-windows:
+    # Wails v2 cross-compiles Windows targets without a Windows SDK or cgo,
+    # so this runner needs neither GTK nor WebKitGTK; the script vets for
+    # Windows and leaves the native desktop tests to ci.yml.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+      - name: Build and package unsigned Windows apps
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: sh scripts/desktop-release.sh windows
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-windows
+          path: dist/desktop/
+          if-no-files-found: error
+
+  # Secrets are not readable in a job-level "if", so a job decides.
+  mac-secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - id: check
+        env:
+          P12: ${{ secrets.MACOS_CERT_P12 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.MACOS_NOTARY_ISSUER }}
+        run: |
+          if [ -n "$P12" ] && [ -n "$P12_PASSWORD" ] && [ -n "$NOTARY_KEY" ] && [ -n "$NOTARY_KEY_ID" ] && [ -n "$NOTARY_ISSUER" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "macOS signing secrets present: building the desktop app and signing the CLI"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "macOS signing secrets absent: skipping the desktop app (upload a local build, docs/RELEASING.md)"
+          fi
+
+  desktop-mac:
+    needs: mac-secrets
+    if: needs.mac-secrets.outputs.present == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - name: Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+      # The Developer ID certificate goes into a keychain made for this job
+      # and deleted after it; the notary API key into a file under
+      # RUNNER_TEMP. Neither touches the checkout or the logs.
+      - name: Import the signing identity
+        env:
+          P12: ${{ secrets.MACOS_CERT_P12 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+        run: |
+          set -eu
+          keychain="$RUNNER_TEMP/release.keychain-db"
+          password=$(openssl rand -hex 24)
+          printf '%s' "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" login.keychain-db
+          rm -f "$RUNNER_TEMP/cert.p12"
+          printf '%s\n' "$NOTARY_KEY" > "$RUNNER_TEMP/notary.p8"
+          chmod 600 "$RUNNER_TEMP/notary.p8"
+          security find-identity -v -p codesigning "$keychain" | grep -c 'Developer ID Application' > /dev/null
+      - name: Build, sign, notarize the app and CLI
+        env:
+          VERSION: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          WAYGLASS_NOTARY_KEY: ${{ runner.temp }}/notary.p8
+          WAYGLASS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          WAYGLASS_NOTARY_ISSUER: ${{ secrets.MACOS_NOTARY_ISSUER }}
+        run: |
+          sh scripts/desktop-release.sh mac
+          make release-sign-mac
+          sh scripts/test-install.sh
+      - name: Remove the signing identity
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/release.keychain-db" || true
+          rm -f "$RUNNER_TEMP/notary.p8" "$RUNNER_TEMP/cert.p12"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-mac
+          path: dist/desktop/
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: cli-signed-mac
+          path: dist/wayglass_darwin_*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: [cli, desktop-linux, desktop-windows, desktop-mac]
+    # Runs when the mac job was skipped for want of secrets, not when it failed.
+    if: >-
+      always()
+      && needs.cli.result == 'success'
+      && needs.desktop-linux.result == 'success'
+      && needs.desktop-windows.result == 'success'
+      && (needs.desktop-mac.result == 'success' || needs.desktop-mac.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: artifacts
+      - name: Collect assets
+        run: |
+          set -eu
+          mkdir -p release
+          cp artifacts/cli/wayglass_*.tar.gz release/
+          cp artifacts/cli/wayglass_windows_*.zip release/
+          if [ -d artifacts/cli-signed-mac ]; then
+            cp artifacts/cli-signed-mac/wayglass_darwin_*.tar.gz release/
+          fi
+          # Hash the final archives, after the signed Darwin ones replace the
+          # cross-compiled dry-run builds. The installer uses these checksums.
+          (cd release && sha256sum wayglass_*.tar.gz wayglass_windows_*.zip > checksums.txt)
+          cp artifacts/desktop-linux/*.tar.gz release/
+          cp artifacts/desktop-windows/*.zip release/
+          if [ -d artifacts/desktop-mac ]; then cp artifacts/desktop-mac/*.zip release/; fi
+          # One desktop checksum file from the per-platform ones.
+          cat artifacts/desktop-*/desktop-checksums.txt > release/desktop-checksums.txt
+          ls -l release
+          cat release/checksums.txt release/desktop-checksums.txt
+      - name: Publish tagged release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          MAC_RESULT: ${{ needs.desktop-mac.result }}
+        run: |
+          # A release must include the Mac app too. If signing happens on
+          # the maintainer's Mac, keep the release in draft until that upload is done.
+          if [ "$MAC_RESULT" = success ]; then
+            gh release create "$RELEASE_TAG" release/* --verify-tag --title "$RELEASE_TAG" --generate-notes
+          else
+            gh release create "$RELEASE_TAG" release/* --verify-tag --title "$RELEASE_TAG" --generate-notes --draft
+            echo 'Draft created: upload the signed macOS app and CLI before publishing (docs/RELEASING.md).'
+          fi

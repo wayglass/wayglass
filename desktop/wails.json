@@ -1,0 +1,19 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Wayglass",
+  "outputfilename": "Wayglass",
+  "frontend:dir": "frontend",
+  "frontend:install": "",
+  "frontend:build": "",
+  "wailsjsdir": "./frontend",
+  "author": {
+    "name": "Wayglass contributors"
+  },
+  "info": {
+    "companyName": "Wayglass",
+    "productName": "Wayglass",
+    "productVersion": "0.1.0",
+    "copyright": "MIT License",
+    "comments": "Monitor agents and decide the changes routed to you."
+  }
+}

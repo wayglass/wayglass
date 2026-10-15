@@ -1,0 +1,40 @@
+ ◆ wayglass  watch  │ acme-web │ US · EU │ ▲ 3 waiting for a person                                     SAMPLE DATA   --demo-data, not live 
+ agents 5 · open intents 4 of 6 · overlaps 1 · last event 48s ago · time saved ≈30m est.                                                    
+╭─ Intents 6 · 4 open ─────────────────────────────────╮╭─ Intent i3f2a91c0d1 ─────────────────────────────────────────────────────────────╮
+│ ▸ i3f2a91  claude-1   Add rate limiting …  proposed  ││ Add rate limiting to login                                                       │
+│   i0c9d8e  claude-2   Store date of birt…  proposed  ││ claude-1 · proposed · fork acme-web--i3f2a91c0d1 · declared 09:00:00 · jurisdic… │
+│   i7b4e0d  codex-2    Pin Worker compati…  proposed  ││ Why: Credential stuffing spikes seen in last week's logs.                        │
+│   i5a6b7c  claude-3   Refactor session c…  open      ││                                                                                  │
+│   i1a2b3c  codex-1    Document the sessi…  landed    ││ PATHS  declared against pushed                                                   │
+│   i9e8d7c  codex-1    Tidy header spacing  landed    ││ PATH                                            DECLARED  PUSHED     NOTE        │
+│                                                      ││ web/login.ts                                    yes       yes        ⇄ overlap   │
+│                                                      ││ web/middleware/**                               yes       1 file(s)              │
+│                                                      ││ web/middleware/ratelimit.ts                     via glob  yes                    │
+│                                                      ││                                                                                  │
+│                                                      ││ CHANGE  tags as classified                                                       │
+│                                                      ││ area auth,web · data class - · risk low · jurisdiction US                        │
+│                                                      ││ human by rule auth-needs-human · ▲ needs a person                                │
+│                                                      ││ Rule's reason: Auth is a security boundary.                                      │
+│                                                      ││ 2 file(s) +82 -4                                                                 │
+│                                                      ││                                                                                  │
+│                                                      ││ OVERLAPS                                                                         │
+│                                                      ││ ⇄ i5a6b7c8d90 (claude-3: Refactor session cookie handling)                       │
+│                                                      ││   on web/login.ts                                                                │
+│                                                      ││   suggested re-plan: land i3f2a91c0d1 before i5a6b7c8d90; i3f2a91c0d1 is         │
+│                                                      ││   proposed, i5a6b7c8d90 lands after it                                           │
+│                                                      ││                                                                                  │
+│                                                      ││                                                                                  │
+╰──────────────────────────────────────────────────────╯╰──────────────────────────────────────────────────────────────────────────────────╯
+╭─ Activity 26 ──────────────────────────────────────────────────────╮╭─ Overlaps 1 ───────────────────────────────────────────────────────╮
+│ 09:00:06  policy          i0c9d8e quarantine by rule eu-pii-quara… ││ ⇄ i3f2a91 ↔ i5a6b7c on web/login.ts                                │
+│ 09:00:07  codex-2         i7b4e0d pushed 1 file(s) to acme-web--i… ││   → land i3f2a91 first, i5a6b7c lands after it                     │
+│ 09:00:08  codex-2         i7b4e0d proposed 7b4e0d2                 │╰────────────────────────────────── re-planned, not failed at merge ─╯
+│ 09:00:08  policy          i7b4e0d multi_approve by rule infra-two… │╭─ Policy 5 decisions ───────────────────────────────────────────────╮
+│ 09:00:09  maya            i7b4e0d approval 1 of 2: Date matches t… ││ auto-merge      1  ■                                               │
+│ 09:00:10  codex-1         i9e8d7c pushed 1 file(s) to acme-web--i… ││ agent review    1  ■                                               │
+│ 09:00:10  codex-1         i9e8d7c proposed 9e8d7c6                 ││ human           1  ■                                               │
+│ 09:00:10  policy          i9e8d7c agent_review by rule low-risk-a… ││ multi-approve   1  ■                                               │
+│ 09:00:12  agent:reviewer  i9e8d7c agent review passed: Diff match… ││ quarantine      1  ■                                               │
+│ 09:00:12  agent:reviewer  i9e8d7c landed on trunk                  ││ block           0                                                  │
+╰────────────────────────────────────────────────────────────────────╯╰────────────────────────────────────────────────────────────────────╯
+ esc back · ↑/k up · ↓/j down · pgdn scroll down · ? keys · q quit                                                         updated 09:01:00 

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Stand-in for `npx wrangler` in scripts/test-selfhost.sh. State lives in
+# $STUB_STATE: one file per queue (holding its id) and per Worker.
+set -euo pipefail
+printf 'wrangler %s\n' "${*:2}" >>"$STUB_STATE/calls"
+[ "${1:-}" = wrangler ] || { echo "npx stub: only wrangler is stubbed" >&2; exit 1; }
+shift
+case "$1 ${2:-}" in
+  "queues info")
+    if [ "${STUB_FAIL:-}" = queue-auth ]; then
+      printf '✘ [ERROR] A request to the Cloudflare API (/accounts/x/queues) failed.\n\n  Authentication error [code: 10000]\n' >&2
+      exit 1
+    fi
+    if [ -f "$STUB_STATE/queue-$3" ]; then
+      printf 'Queue ID: %s\nCreated On: 2026-10-14\nProducers: worker:x\n' "$(cat "$STUB_STATE/queue-$3")"
+    else
+      printf '✘ [ERROR] Queue "%s" does not exist. To create it, run: wrangler queues create %s\n' "$3" "$3" >&2
+      exit 1
+    fi ;;
+  "queues create")
+    openssl rand -hex 16 | tr -d '\n' >"$STUB_STATE/queue-$3"
+    printf "Creating queue '%s'\nCreated queue '%s'\n" "$3" "$3" ;;
+  "deploy --config")
+    if [ "${4:-}" = --dry-run ]; then echo "--dry-run: exiting now."; exit 0; fi
+    secrets=$5
+    [ "$(stat -c %a "$secrets" 2>/dev/null || stat -f %Lp "$secrets")" = 600 ] || { echo "secrets file is not 0600" >&2; exit 1; }
+    # --keep-key sends no admin key; otherwise it must be a fresh 64-hex one.
+    if grep -q '"WAYGLASS_ADMIN_KEY"' "$secrets"; then
+      grep -q '"WAYGLASS_ADMIN_KEY":"[0-9a-f]\{64\}"' "$secrets" || { echo "secrets file has a malformed admin key" >&2; exit 1; }
+      echo "secrets admin_key=new" >>"$STUB_STATE/calls"
+    else
+      echo "secrets admin_key=kept" >>"$STUB_STATE/calls"
+    fi
+    name=$(sed -n 's/^ *"name": *"\([^"]*\)".*/\1/p' "$3" | head -n1)
+    touch "$STUB_STATE/worker-$name"
+    printf 'Uploaded %s\nDeployed %s triggers\n  https://%s.test.workers.dev\n' "$name" "$name" "$name" ;;
+  *) echo "npx stub: unexpected wrangler $*" >&2; exit 1 ;;
+esac

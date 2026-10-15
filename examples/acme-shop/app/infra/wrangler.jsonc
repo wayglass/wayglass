@@ -1,0 +1,22 @@
+// Runs the shop as a Cloudflare Container behind a small Worker.
+// ACME_SESSION_KEY is a secret: `wrangler secret put ACME_SESSION_KEY`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "acme-shop",
+  "main": "worker.ts",
+  "compatibility_date": "2026-09-01",
+  "containers": [
+    {
+      "class_name": "ShopContainer",
+      "image": "./Dockerfile",
+      "instance_type": "basic",
+      "max_instances": 2
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "SHOP", "class_name": "ShopContainer" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ShopContainer"] }],
+  "routes": [{ "pattern": "shop.acme.example", "custom_domain": true }],
+  "observability": { "enabled": true }
+}

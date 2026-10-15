@@ -1,0 +1,18 @@
+<!-- wayglass:begin -->
+## Wayglass: how changes land in this repo
+
+Every change goes through Wayglass policy. Pass `--json` to every `wayglass` command and branch on its exit code; it never prompts.
+
+1. **At startup**, set `WAYGLASS_AGENT_FAMILY` to your model family (`claude`, `openai`, `gemini` or `other`) and run `wayglass session show --json`. If it returns a session, continue that intent with its notes instead of declaring a new one.
+2. **Declare before you code:** `wayglass intent declare --goal "..." --reason "..." --path "<file or glob>" --json` (one `--path` per file or glob you expect to touch). Read `overlaps` in the reply.
+3. **Commit with the why:** the message says why, not only what, and ends with the trailer `Wayglass-Intent: <intent-id>`. `wayglass push -m "..."` commits everything with the trailer for you.
+4. **Push:** `wayglass push --json`. If `overlaps` is not empty, follow each `replan` suggestion (land first, stack with `intent declare --on <id>`, or split) before going on.
+5. **Propose:** `wayglass propose --json`, then obey the exit code. `0`: may land once `status` is `approved` (`pending_agent` waits for a reviewer agent). `3`: blocked; change the code, do not retry it as is. `4`: a person must act; stop and tell your user. `next` says what happens now.
+6. **Check approval** with `wayglass watch --json`: find this intent's latest entry in `data.decisions` and read its `status`. Do not rerun `propose` to poll: it records a new decision and replaces the approval. **Land** only an approved change: `wayglass land --json`. If it stops with `policy_changed` or `land_conflict`, run `wayglass sync --json` (merges the trunk in), resolve any `conflicts` and commit, then push and propose again.
+7. **Never approve your own work**, and never approve a change policy routed to a person (an agent key gets `needs_human`, exit 4: leave it to the person).
+8. **Reviewer agents:** `wayglass review --for agent --json` lists `agent_review` changes. Read the proposed commit with `wayglass diff <intent-id> --json`, which fetches the fork with a read-only token; plain git fetch of another intent's URL has no credentials. Test that commit and decide one you did not author with `wayglass approve <intent-id> --reason "what you checked" --json` (or `reject`). `same_family` or `family_required` means policy wants a reviewer from another model family: leave it to one.
+
+Exit codes: 0 ok, 1 error, 2 usage, 3 blocked by policy, 4 needs a person. Errors arrive as `{"ok":false,"error":{"code":...}}`.
+
+The full loop and reviewer duty are also agent skills: `npx skills add wayglass/wayglass-skill`.
+<!-- wayglass:end -->

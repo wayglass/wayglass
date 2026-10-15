@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# Stand-in for curl in scripts/test-selfhost.sh: answers the Cloudflare REST
+# calls selfhost.sh makes from the state in $STUB_STATE, and checks the token
+# arrives on stdin, never in argv.
+set -euo pipefail
+case "$*" in *"$CLOUDFLARE_API_TOKEN"*) echo "curl stub: token in argv" >&2; exit 2 ;; esac
+
+method=GET url="" data=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -X) method=$2; shift 2 ;;
+    --data) data=$2; shift 2 ;;
+    -H|-w|-o|--config) shift 2 ;;
+    https://*) url=$1; shift ;;
+    *) shift ;;
+  esac
+done
+
+# Requests to the deployed Worker (the --access check): no token, and the
+# answer is what Access would do, printed as `-w '%{http_code} %{redirect_url}'`.
+case "$url" in
+  https://api.cloudflare.com/*) ;;
+  *)
+    printf 'probe %s\n' "$url" >>"$STUB_STATE/calls"
+    host=${url#https://}; host=${host%%/*}; p=/${url#https://*/}
+    team=$(cat "$STUB_STATE/org" 2>/dev/null || true)
+    gated=0
+    grep -lqs "\"uri\":\"$host\"" "$STUB_STATE"/app-* && gated=1
+    [ "${STUB_FAIL:-}" = no-redirect ] && gated=0
+    case "$p" in
+      /v1/whoami) printf 401 ;;
+      *) if [ "$gated" -eq 1 ]; then printf '302 https://%s/cdn-cgi/access/login/%s' "$team" "$host"; else printf '200 '; fi ;;
+    esac
+    exit 0 ;;
+esac
+
+config=$(cat)
+case "$config" in *"Authorization: Bearer $CLOUDFLARE_API_TOKEN"*) ;; *) echo "curl stub: no bearer header on stdin" >&2; exit 2 ;; esac
+path=${url#*/accounts/*/}
+printf '%s /%s\n' "$method" "$path" >>"$STUB_STATE/calls"
+
+reply() { printf '%s\n%s' "$2" "$1"; exit 0; }
+missing() { reply 404 "{\"success\":false,\"errors\":[{\"code\":${1:-10007},\"message\":\"$2\"}]}"; }
+
+if [ "${STUB_FAIL:-}" = api-auth ]; then
+  reply 403 '{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}'
+fi
+
+case "$method $path" in
+  "GET artifacts/namespaces/"*)
+    ns=${path#artifacts/namespaces/}
+    [ -f "$STUB_STATE/ns-$ns" ] || missing 10007 "namespace not found"
+    reply 200 "{\"success\":true,\"result\":{\"name\":\"$ns\",\"jurisdiction\":\"$(cat "$STUB_STATE/ns-$ns")\"}}" ;;
+  "POST artifacts/namespaces")
+    ns=$(printf %s "$data" | sed -n 's/.*"namespace":"\([^"]*\)".*/\1/p')
+    j=$(printf %s "$data" | sed -n 's/.*"jurisdiction":"\([^"]*\)".*/\1/p')
+    printf %s "${j:-unrestricted}" >"$STUB_STATE/ns-$ns"
+    reply 200 "{\"success\":true,\"result\":{\"name\":\"$ns\"}}" ;;
+  "GET workers/services/"*)
+    w=${path#workers/services/}
+    [ -f "$STUB_STATE/worker-$w" ] || missing 10090 "This Worker does not exist on this account."
+    reply 200 '{"success":true,"result":{}}' ;;
+  "DELETE workers/scripts/"*)
+    w=${path#workers/scripts/}; w=${w%%\?*}
+    for f in "$STUB_STATE"/queue-*; do
+      [ -e "$f" ] && reply 400 '{"success":false,"errors":[{"code":10064,"message":"Cannot delete this Worker as it is a consumer for a Queue."}]}'
+    done
+    rm -f "$STUB_STATE/worker-$w"
+    # Like the judged run: the Worker is gone, but the call still reports an error.
+    [ "${STUB_FAIL:-}" = delete-late ] && reply 403 '{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}'
+    reply 200 '{"success":true,"result":null}' ;;
+  "GET workers/subdomain")
+    [ "${STUB_FAIL:-}" = no-subdomain ] && missing 10007 "This account does not have a workers.dev subdomain"
+    reply 200 '{"success":true,"result":{"subdomain":"test"}}' ;;
+  "GET access/"* | "POST access/"* | "PUT access/"* | "DELETE access/"*)
+    [ "${STUB_FAIL:-}" = access-auth ] &&
+      reply 403 '{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}'
+    case "$method $path" in
+      "GET access/organizations")
+        [ "${STUB_FAIL:-}" = org-disabled ] &&
+          reply 403 '{"success":false,"errors":[{"code":9999,"message":"access.api.error.not_enabled: Access is not enabled"}]}'
+        [ "${STUB_FAIL:-}" = org-auth ] &&
+          reply 403 '{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}'
+        [ -f "$STUB_STATE/org" ] || missing 12130 "access.api.error.not_found: organization not found"
+        reply 200 "{\"success\":true,\"result\":{\"auth_domain\":\"$(cat "$STUB_STATE/org")\",\"name\":\"stub\"}}" ;;
+      "GET access/identity_providers"*)
+        reply 200 "$(node -e '
+          const fs=require("fs"),dir=process.argv[1];
+          const r=fs.readdirSync(dir).filter(f=>f.startsWith("idp-")).map(f=>JSON.parse(fs.readFileSync(dir+"/"+f,"utf8")));
+          process.stdout.write(JSON.stringify({success:true,result:r}));' "$STUB_STATE")" ;;
+      "POST access/identity_providers")
+        [ "${STUB_FAIL:-}" = idp-write ] &&
+          reply 403 '{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}'
+        id=$(openssl rand -hex 16)
+        WG_DATA=$data node -e 'const d=JSON.parse(process.env.WG_DATA);d.id=process.argv[1];require("fs").writeFileSync(process.argv[2],JSON.stringify(d))' "$id" "$STUB_STATE/idp-$id"
+        reply 200 "{\"success\":true,\"result\":$(cat "$STUB_STATE/idp-$id")}" ;;
+      "GET access/apps?"*)
+        reply 200 "$(node -e '
+          const fs=require("fs"),dir=process.argv[1];
+          const r=fs.readdirSync(dir).filter(f=>f.startsWith("app-")).map(f=>JSON.parse(fs.readFileSync(dir+"/"+f,"utf8")));
+          process.stdout.write(JSON.stringify({success:true,result:r}));' "$STUB_STATE")" ;;
+      "POST access/apps" | "PUT access/apps/"*)
+        if [ "$method" = POST ]; then id=$(openssl rand -hex 16); else id=${path#access/apps/}; [ -f "$STUB_STATE/app-$id" ] || missing 12130 "app not found"; fi
+        # Like Access: keep the AUD across updates, give each new inline policy an id.
+        WG_DATA=$data node -e '
+          const fs=require("fs"),[id,file]=process.argv.slice(1);
+          const d=JSON.parse(process.env.WG_DATA);
+          const old=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,"utf8")):null;
+          d.id=id; d.aud=old?old.aud:require("crypto").randomBytes(32).toString("hex");
+          d.policies=(d.policies||[]).map(p=>({...p,id:p.id||require("crypto").randomUUID()}));
+          fs.writeFileSync(file,JSON.stringify(d));' "$id" "$STUB_STATE/app-$id"
+        reply 200 "{\"success\":true,\"result\":$(cat "$STUB_STATE/app-$id")}" ;;
+      "GET access/apps/"*)
+        id=${path#access/apps/}
+        [ -f "$STUB_STATE/app-$id" ] || missing 12130 "access.api.error.not_found"
+        reply 200 "{\"success\":true,\"result\":$(cat "$STUB_STATE/app-$id")}" ;;
+      "DELETE access/apps/"*)
+        id=${path#access/apps/}
+        [ -f "$STUB_STATE/app-$id" ] || missing 12130 "access.api.error.not_found"
+        rm -f "$STUB_STATE/app-$id"
+        reply 200 "{\"success\":true,\"result\":{\"id\":\"$id\"}}" ;;
+    esac ;;
+  "GET queues/"* | "DELETE queues/"*)
+    id=${path#queues/}
+    for f in "$STUB_STATE"/queue-*; do
+      if [ -e "$f" ] && [ "$(cat "$f")" = "$id" ]; then
+        [ "$method" = DELETE ] && rm -f "$f"
+        reply 200 '{"success":true,"result":{}}'
+      fi
+    done
+    missing 11000 "Queue does not exist" ;;
+esac
+echo "curl stub: unexpected $method $path" >&2
+exit 2

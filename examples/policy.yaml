@@ -1,0 +1,65 @@
+# Demo policy for Wayglass. Copy to .wayglass/policy.yaml (wayglass init does
+# this for you). Rules are checked top to bottom; the first enforcing rule that
+# matches decides.
+#
+# Trying a new rule: add `mode: shadow` (the default is `mode: enforce`). A
+# shadow rule never decides; every decision records the shadow rules that
+# matched and whether the first of them would have changed the action. Run
+# `wayglass policy test` to replay recent commits through this file, then drop
+# `mode: shadow` once the rule does what you expect. Example:
+#   - { when: { area: web, data_class: pii }, action: quarantine, reason: "Trial: all PII review.", mode: shadow }
+version: 1
+classify:
+  area:
+    docs: ["docs/**", "**/*.md"]
+    web: ["web/**"]
+    auth: ["**/auth/**", "**/login*"]
+    infra: ["worker/wrangler.jsonc", ".github/**"]
+  data_class:
+    # Secrets: any added line that looks like a credential, or any file that
+    # usually holds one. Regexes are RE2 (no lookaround), matched one added
+    # line at a time; evidence records the pattern and the line number, never
+    # the matched text. Cloudflare API tokens have no fixed prefix, so they
+    # are not listed; name the variable (api_key) and the first pattern finds it.
+    secrets:
+      content:
+        - "(?i)api[_-]?key"
+        - "art_v[0-9]+_([a-z]+_)?[0-9a-f]{40}"                            # Artifacts repo token
+        - "-----BEGIN [A-Z ]*PRIVATE KEY-----"                            # PEM private key (RSA, EC, OPENSSH, ...)
+        - "\\b(A3T[A-Z0-9]|AKIA|ASIA)[A-Z0-9]{16}\\b"                     # AWS access key id
+        - "\\bgh[pousr]_[A-Za-z0-9]{36,}"                                 # GitHub token
+        - "\\bgithub_pat_[A-Za-z0-9_]{22,}"                               # GitHub fine-grained token
+        - "\\bsk-ant-[A-Za-z0-9_-]{20,}"                                  # Anthropic API key
+        - "\\bsk-(proj-|svcacct-|admin-)?[A-Za-z0-9_]{8}[A-Za-z0-9_-]{12,}" # OpenAI API key (sk-ant- has a dash in the first eight, so it is the line above)
+        - "\\bxox[baprs]-[A-Za-z0-9-]{10,}"                               # Slack token
+        - "\\b[sr]k_live_[A-Za-z0-9]{20,}"                                # Stripe live key
+        - "\\bAIza[0-9A-Za-z_-]{35}"                                      # Google API key
+      # Files that hold keys, whatever their lines say (a binary file has no
+      # lines to scan). Globs cannot exclude a name, so the env files are
+      # listed one by one: .env.example and .env.sample are templates and stay
+      # out; add the names your project uses.
+      paths:
+        - "**/*.pem"
+        - "**/*.p12"
+        - "**/*.pfx"
+        - "**/*.key"
+        - "**/id_rsa"
+        - "**/id_ed25519"
+        - "**/.env"
+        - "**/.env.{local,development,dev,production,prod,staging,stage,test,ci}"
+    pii: { content: ["(?i)\\bssn\\b", "(?i)date_of_birth"] }
+  risk:
+    high: { lines_changed_over: 400, binary_bytes_over: 250000 }
+# Binary files cannot be content-scanned. Any binary file outside this list
+# goes to a person (builtin:unscanned-binary); this list is the default when
+# the key is absent, and `allow: []` sends every binary file to a person.
+binary:
+  allow: ["**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.gif", "**/*.webp", "**/*.ico", "**/*.woff", "**/*.woff2"]
+rules:
+  - { when: { data_class: secrets }, action: block, reason: "Secrets never land." }
+  - { when: { area: infra }, action: multi_approve, approvers: 2, reason: "Infra changes affect everyone." }
+  - { when: { area: auth }, action: human_approve, reason: "Auth is a security boundary." }
+  - { when: { jurisdiction: eu, data_class: pii }, action: quarantine, reason: "EU personal data needs DPO review." }  # fires on the eu demo namespace
+  - { when: { only_area: docs, risk: low }, action: auto_merge, reason: "Routine docs change; every file is docs." }
+  - { when: { risk: low }, action: agent_review, reason: "Low risk; second agent checks intent vs diff." }
+default: { action: human_approve, reason: "No rule matched; a person decides." }

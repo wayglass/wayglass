@@ -1,0 +1,24 @@
+ ◆ wayglass  review  │ acme-web │ ▲ 3 waiting for a person         SAMPLE DATA  
+╭─ Queue 3 ────────────────────────────────────────────────────────────────────╮
+│   i3f2a91  approve           Add rate limiting to login                      │
+│   i0c9d8e  quarantine        Store date of birth at signup                   │
+│ ▸ i7b4e0d  multi-approve 1/2 Pin Worker compatibility date                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Intent i7b4e0d2a55 ─────────────────────────────────────────────────────────╮
+│ Pin Worker compatibility date                                                │
+│ by codex-2 · fork acme-web--i7b4e0d2a55 · declared 09:00:01                  │
+│ Why: Unpinned date changed runtime behaviour in staging.                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Policy multi-approve ───────────────────────────────────────────────────────╮
+│ rule      infra-two-people → multi-approve                                   │
+│ reason    Infra changes affect everyone.                                     │
+│ status    ▲ needs a person 1/2                                               │
+│ approved  1 of 2                                                             │
+│ ✓ approve maya at 09:00: Date matches the staging fix.                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Tags ───────────────────────────────────────────────────────────────────────╮
+│ AREA               DATA CLASS         RISK               JURISDICTION        │
+│ infra              -                  low                US                  │
+│                                                                              │
+│ · area infra ← worker/wrangler.jsonc                                         │
+ ↓ more  ↑/k up · ↓/j down · a approve · x reject · tab show…  updated 09:01:00 

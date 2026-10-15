@@ -1,0 +1,30 @@
+{
+  "source": "coversheets/one-skill-to-rule-them-all-skill",
+  "version": 1,
+  "files": [
+    {
+      "path": "validate.py",
+      "sha256": "9df914eed5752032bc7b4d27fe376c17f802ca8706004a3087fef100221ac394"
+    },
+    {
+      "path": "run_checks.py",
+      "sha256": "5323d6cf9e168e704261dbdc8e83a90039fbad40ae60745b93007b464c824434"
+    },
+    {
+      "path": "scan_secrets.py",
+      "sha256": "2ffe6adb5c8f0fd2560cc873ad4fc282902a99255ee311a69a4eceaf22ae9d36"
+    },
+    {
+      "path": "skills.sh.schema.json",
+      "sha256": "294ee68d09b81e9368a6b33510d4fa9511afca506f410a568f73e5a8bd38bcf8"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "cae5e32150df57c20b5f7225a7274e9984abb66234f25391ff738991c3aa9ff1"
+    },
+    {
+      "path": ".github/workflows/skill-quality.yml",
+      "sha256": "118f8d05e86b92c2324c7edf397b481c4ba6a2e64bf17e6c29e0e8c5678e843e"
+    }
+  ]
+}

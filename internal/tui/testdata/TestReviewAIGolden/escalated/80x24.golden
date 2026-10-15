@@ -1,0 +1,24 @@
+ ◆ wayglass  review  │ acme-web │ ▲ 4 waiting for a person         SAMPLE DATA  
+╭─ Queue 4 ────────────────────────────────────────────────────────────────────╮
+│   i3f2a91  approve ·advised  Add rate limiting to login                      │
+│   i0c9d8e  quarantine        Store date of birth at signup                   │
+│   i7b4e0d  multi-approve 1/2 Pin Worker compatibility date                   │
+│ ▸ i4c5d6e  AI escalated      Retry failed metrics uploads                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Intent i4c5d6e7f8a ─────────────────────────────────────────────────────────╮
+│ Retry failed metrics uploads                                                 │
+│ by claude-4 · fork acme-web--i4c5d6e7f8a · declared 09:00:15                 │
+│ Why: Dashboards show gaps when the collector restarts.                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Policy human ───────────────────────────────────────────────────────────────╮
+│ rule      low-risk-agent-review → human                                      │
+│ reason    Low risk; a second agent checks intent vs diff.                    │
+│ status    ▲ AI escalated                                                     │
+│ ◆ Escalated by AI reviewer (@cf/meta/llama-4-scout-17b-16e-instruct): The    │
+│ change adds a call to a host the goal does not mention (metrics.example.net) │
+│ and retries without an upper bound.                                          │
+│   • new outbound host metrics.example.net                                    │
+│   • retry loop has no limit                                                  │
+│   was agent review; a person decides it now                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+ ↓ more  ↑/k up · ↓/j down · a approve · x reject · i ask AI…  updated 09:01:00 

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "skills": [
+    "SKILL.md",
+    "plugins/avoid-ai-writing/skills/avoid-ai-writing/SKILL.md",
+    "skills/ai-writing-detector/SKILL.md",
+    "skills/avoid-ai-writing-router/SKILL.md",
+    "skills/avoid-ai-writing/SKILL.md",
+    "skills/false-positive-reviewer/SKILL.md",
+    "skills/file-edit-in-place/SKILL.md",
+    "skills/preservation-verifier/SKILL.md",
+    "skills/voice-preserving-rewriter/SKILL.md"
+  ],
+  "checks": [
+    {
+      "name": "Detector and packaging tests",
+      "command": [
+        "npm",
+        "test"
+      ]
+    },
+    {
+      "name": "Documentation regression scan",
+      "command": [
+        "npm",
+        "run",
+        "self-scan:check"
+      ]
+    }
+  ]
+}

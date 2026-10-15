@@ -1,0 +1,30 @@
+ ◆ wayglass  watch  │ acme-web │ US · EU │ ▲ 3 waiting for a person                    SAMPLE DATA  
+ agents 5 · open intents 4 of 6 · overlaps 1 · last event 48s ago · time saved ≈30m est.            
+╭─ Intents 6 · 4 open ───────────────────────────╮╭─ Intent i3f2a91c0d1 ───────────────────────────╮
+│ ▸ i3f2a91  claude-1   Add rate lim…  proposed  ││ Add rate limiting to login                     │
+│   i0c9d8e  claude-2   Store date o…  proposed  ││ claude-1 · proposed · fork acme-web--i3f2a91c… │
+│   i7b4e0d  codex-2    Pin Worker c…  proposed  ││ Why: Credential stuffing spikes seen in last   │
+│   i5a6b7c  claude-3   Refactor ses…  open      ││ week's logs.                                   │
+│   i1a2b3c  codex-1    Document the…  landed    ││                                                │
+│   i9e8d7c  codex-1    Tidy header …  landed    ││ PATHS  declared against pushed                 │
+│                                                ││ PATH          DECLARED  PUSHED     NOTE        │
+╰────────────────────────────────────────────────╯╰─────────────────────────────── enter to focus ─╯
+╭─ Changes 5 · ▲ 3 wait for a person ──────────────────────────────────────────────────────────────╮
+│ INTENT   AREA        DATA      RISK    JUR  ACTION         RULE                  STATUS          │
+│ i7b4e0d  infra       -         low     US   multi-approve  infra-two-people      ▲ needs you 1/2 │
+│ i0c9d8e  web         pii       low     EU   quarantine     eu-pii-quarantine     ▲ quarantined   │
+│ i3f2a91  auth,web    -         low     US   human          auth-needs-human      ▲ needs you     │
+│ i9e8d7c  web         -         low     US   agent review   low-risk-agent-revi…  landed          │
+│ i1a2b3c  docs        -         low     US   auto-merge     docs-auto             landed          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Activity 26 ──────────────────────────────────╮╭─ Overlaps 1 ───────────────────────────────────╮
+│ 09:00:08  codex-2         i7b4e0d proposed 7b… ││ ⇄ i3f2a91 ↔ i5a6b7c on web/login.ts            │
+│ 09:00:08  policy          i7b4e0d multi_appro… ││   → land i3f2a91 first, i5a6b7c lands after it │
+│ 09:00:09  maya            i7b4e0d approval 1 … │╰────────────── re-planned, not failed at merge ─╯
+│ 09:00:10  codex-1         i9e8d7c pushed 1 fi… │╭─ Policy 5 decisions ───────────────────────────╮
+│ 09:00:10  codex-1         i9e8d7c proposed 9e… ││ auto-merge 1      agent review 1               │
+│ 09:00:10  policy          i9e8d7c agent_revie… ││ human 1           multi-approve 1              │
+│ 09:00:12  agent:reviewer  i9e8d7c agent revie… ││ quarantine 1      block 0                      │
+│ 09:00:12  agent:reviewer  i9e8d7c landed on t… ││                                                │
+╰────────────────────────────────────────────────╯╰────────────────────────────────────────────────╯
+ ↑/k up · ↓/j down · enter intent details · ? keys · q quit                        updated 09:01:00 

@@ -1,0 +1,36 @@
+ ◆ wayglass  review  │ acme-web │ ▲ 3 waiting for a person │ US · EU                          SAMPLE DATA   --demo-data 
+╭─ Queue 3 ──────────────────────────╮╭─ Intent i7b4e0d2a55 ───────────────────────────────────────────────────────────╮
+│   i3f2a91  approve                 ││ Pin Worker compatibility date                                                  │
+│   Add rate limiting to login       ││ by codex-2 · fork acme-web--i7b4e0d2a55 · declared 09:00:01                    │
+│                                    ││ Why: Unpinned date changed runtime behaviour in staging.                       │
+│   i0c9d8e  quarantine              │╰────────────────────────────────────────────────────────────────────────────────╯
+│   Store date of birth at signup    │╭─ Policy multi-approve ─────────────────────────────────────────────────────────╮
+│                                    ││ rule      infra-two-people → multi-approve                                     │
+│ ▸ i7b4e0d  multi-approve 1/2       ││ reason    Infra changes affect everyone.                                       │
+│   Pin Worker compatibility date    ││ status    ▲ needs a person 1/2                                                 │
+│                                    ││ approved  1 of 2                                                               │
+│                                    ││ ✓ approve maya at 09:00: Date matches the staging fix.                         │
+│                                    │╰────────────────────────────────────────────────────────────────────────────────╯
+│                                    │╭─ Tags ─────────────────────────────────────────────────────────────────────────╮
+│                                    ││ AREA                DATA CLASS          RISK                JURISDICTION       │
+│                                    ││ infra               -                   low                 US                 │
+│                                    ││                                                                                │
+│                                    ││ · area infra ← worker/wrangler.jsonc                                           │
+│                                    ││ · jurisdiction us: namespace jurisdiction                                      │
+│                                    │╰────────────────────────────────────────────────────────────────────────────────╯
+│                                    │╭─ Paths 1 file(s) +1 -1 ────────────────────────────────────────────────────────╮
+│                                    ││ declared worker/wrangler.jsonc                                                 │
+│                                    ││ worker/wrangler.jsonc                                               +1    -1   │
+│                                    ││ commit 7b4e0d2                                                                 │
+│                                    │╰────────────────────────────────────────────────────────────────────────────────╯
+│                                    │╭─ Overlaps 0 ───────────────────────────────────────────────────────────────────╮
+│                                    ││ none: no other open intent declared or touched these paths                     │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+╰────────────────────────────────────╯╰────────────────────────────────────────────────────────────────────────────────╯
+ ↑/k up · ↓/j down · a approve · x reject · tab show all · pgdn scroll down · ? keys · q quit          updated 09:01:00 

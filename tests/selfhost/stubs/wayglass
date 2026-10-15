@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Stand-in for the wayglass CLI in scripts/test-selfhost.sh.
+set -euo pipefail
+printf 'wayglass %s\n' "$*" >>"$STUB_STATE/calls"
+case "${1:-}" in
+  login)
+    read -r key
+    [ "${#key}" -eq 64 ] || { echo "login stub: key is not 64 hex characters" >&2; exit 1; }
+    mkdir -p "$WAYGLASS_CONFIG_DIR"
+    printf 'url: %s\nkey: %s\n' "$3" "$key" >"$WAYGLASS_CONFIG_DIR/credentials.yaml"
+    chmod 600 "$WAYGLASS_CONFIG_DIR/credentials.yaml" ;;
+  doctor) echo "ok   login" ;;
+  *) echo "wayglass stub: unexpected $*" >&2; exit 1 ;;
+esac

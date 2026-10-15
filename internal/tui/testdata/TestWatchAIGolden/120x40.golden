@@ -1,0 +1,40 @@
+ ◆ wayglass  watch  │ acme-web │ US · EU │ ▲ 4 waiting for a person                 SAMPLE DATA   --demo-data, not live 
+ agents 7 · open 5 of 8 · overlaps 1 · last 42s ago · saved ≈45m est. · ai 1✓ 1▲ 1adv                                   
+╭─ Intents 8 · 5 open ─────────────────────────────────────╮╭─ Intent i3f2a91c0d1 ─────────────────────────────────────╮
+│   ID       AGENT      GOAL           DECL/PSH  STATUS    ││ Add rate limiting to login                               │
+│ ▸ i3f2a91  claude-1   Add rate lim…  ⇄ 2/2     proposed  ││ claude-1 · proposed · fork acme-web--i3f2a91c0d1 · decl… │
+│   i0c9d8e  claude-2   Store date o…  2/2       proposed  ││ Why: Credential stuffing spikes seen in last week's      │
+│   i7b4e0d  codex-2    Pin Worker c…  1/1       proposed  ││ logs.                                                    │
+│   i5a6b7c  claude-3   Refactor ses…  ⇄ 2/0     open      ││                                                          │
+│   i4c5d6e  claude-4   Retry failed…  1/1       proposed  ││ PATHS  declared against pushed                           │
+│   i1a2b3c  codex-1    Document the…  1/1       landed    ││ PATH                    DECLARED  PUSHED     NOTE        │
+│   i9e8d7c  codex-1    Tidy header …  1/1       landed    ││ web/login.ts            yes       yes        ⇄ overlap   │
+│   i2b3c4d  codex-3    Translate th…  1/1       landed    ││ web/middleware/**       yes       1 file(s)              │
+│                                                          ││ web/middleware/rateli…  via glob  yes                    │
+│                                                          ││                                                          │
+│                                                          ││ CHANGE  tags as classified                               │
+│                                                          ││ area auth,web · data class - · risk low · jurisdiction … │
+╰──────────────────────────────────────────────────────────╯╰───────────────────────────────────────── enter to focus ─╯
+╭─ Changes 7 · ▲ 4 wait for a person ──────────────────────────────────────────────────────────────────────────────────╮
+│ INTENT   AREA        DATA      RISK    JUR  ACTION         RULE                                 STATUS               │
+│ i4c5d6e  web         -         low     US   human          low-risk-agent-review                ▲ AI escalated       │
+│ i7b4e0d  infra       -         low     US   multi-approve  infra-two-people                     ▲ needs a person 1/2 │
+│ i0c9d8e  web         pii       low     EU   quarantine     eu-pii-quarantine                    ▲ quarantined        │
+│ i3f2a91  auth,web    -         low     US   human          auth-needs-human                     ▲ needs a person     │
+│ i2b3c4d  web         -         low     US   agent review   low-risk-agent-review                landed ·AI           │
+│ i9e8d7c  web         -         low     US   agent review   low-risk-agent-review                landed               │
+│ i1a2b3c  docs        -         low     US   auto-merge     docs-auto                            landed               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Activity 38 ────────────────────────────────────────────╮╭─ Overlaps 1 ─────────────────────────────────────────────╮
+│ 09:00:13  codex-3         i2b3c4d proposed 2b3c4d5       ││ ⇄ i3f2a91 ↔ i5a6b7c on web/login.ts                      │
+│ 09:00:13  policy          i2b3c4d agent_review by rule … ││   → land i3f2a91 first, i5a6b7c lands after it           │
+│ 09:00:14  workers-ai:@c…  i2b3c4d approved by AI review… │╰──────────────────────── re-planned, not failed at merge ─╯
+│ 09:00:14  workers-ai:@c…  i2b3c4d landed on trunk        │╭─ Policy 7 decisions ─────────────────────────────────────╮
+│ 09:00:15  claude-4        i4c5d6e declared: Retry faile… ││ auto-merge      1  ■                                     │
+│ 09:00:15  claude-4        i4c5d6e pushed 1 file(s) to a… ││ agent review    2  ■■                                    │
+│ 09:00:16  claude-4        i4c5d6e proposed 4c5d6e7       ││ human           2  ■■                                    │
+│ 09:00:16  policy          i4c5d6e agent_review by rule … ││ multi-approve   1  ■                                     │
+│ 09:00:17  workers-ai:@c…  i4c5d6e escalated to a person… ││ quarantine      1  ■                                     │
+│ 09:00:18  workers-ai:@c…  i3f2a91 AI advice: Limits log… ││ block           0                                        │
+╰──────────────────────────────────────────────────────────╯╰──────────────────────────────────────────────────────────╯
+ ↑/k up · ↓/j down · enter intent details · ? keys · q quit                                            updated 09:01:00 

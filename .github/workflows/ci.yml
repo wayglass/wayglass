@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# No deploy job: deploys need the maintainer's approval.
+# Spike tests that hit Cloudflare sit behind a build tag and never run here.
+# Actions are pinned to commit SHAs (the tag is in the comment), so a moved
+# tag cannot change what runs with the repo's contents.
+
+jobs:
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+
+      - name: gofmt
+        run: |
+          out="$(gofmt -l cmd internal)"
+          if [ -n "$out" ]; then
+            echo "Files need gofmt:"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8.0.0
+        with:
+          version: v2.14.0
+
+      - name: go test
+        run: go test ./...
+
+      # The Worker ships the committed policy.wasm; fail if it no longer
+      # matches internal/policy (the build is reproducible for a pinned Go).
+      - name: policy wasm is up to date
+        run: make wasm-check
+
+      # The same CLI archives a tagged release publishes, then the installer
+      # against them (checksum verification, refused corrupt downloads).
+      - name: release archives
+        env:
+          VERSION: ${{ github.sha }}
+          COMMIT: ${{ github.sha }}
+        run: make release-dry-run
+
+      - name: installer
+        run: sh scripts/test-install.sh
+
+  desktop-windows:
+    name: Windows desktop and CLI
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            desktop/go.sum
+      - name: Build and check the native CLI
+        run: |
+          go build -o bin/wayglass.exe ./cmd/wayglass
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./bin/wayglass.exe version --json
+      - name: Desktop vet
+        working-directory: desktop
+        run: go vet ./...
+      - name: Desktop tests (native x64)
+        working-directory: desktop
+        run: go test ./...
+      - name: Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+      - name: Build desktop for x64 and ARM64
+        working-directory: desktop
+        run: |
+          wails build -platform windows/amd64 -o Wayglass-amd64.exe -webview2 browser
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          wails build -platform windows/arm64 -o Wayglass-arm64.exe -webview2 browser
+
+  scripts:
+    name: Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: shellcheck
+        run: |
+          shellcheck -S warning -x -P SCRIPTDIR \
+            scripts/selfhost.sh scripts/test-selfhost.sh tests/selfhost/stubs/* \
+            scripts/install.sh scripts/test-install.sh scripts/release.sh scripts/macos-signing.sh scripts/test-macos-signing.sh scripts/desktop-release.sh scripts/spike.sh \
+            scripts/demo/*.sh scripts/demo/second-machine/run.sh
+
+      - name: macOS release failure checks (stubbed tools)
+        run: sh scripts/test-macos-signing.sh
+
+      # selfhost.sh against stubbed wrangler, curl and wayglass; no Cloudflare calls.
+      - name: selfhost.sh
+        run: bash scripts/test-selfhost.sh
+
+  worker:
+    name: Worker
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - run: npm ci
+      - run: npx wrangler types
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+      - run: node --test ../tests/console-model.test.mjs

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Hardened runtime, no entitlements. The app is not sandboxed (it reads
+     the CLI's login in ~/.config/wayglass, which a sandboxed app could not
+     see without a container of its own), so networking needs no entitlement,
+     and a Go binary needs neither JIT nor unsigned executable memory.
+     scripts/desktop-release.sh passes this file so a future entitlement is
+     one line here, not a change to the script. -->
+<plist version="1.0">
+<dict/>
+</plist>

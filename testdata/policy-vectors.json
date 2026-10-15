@@ -1,0 +1,2926 @@
+{
+  "_comment": "Shared policy test vectors. Go (internal/policy/vectors_test.go) and the Worker (worker/test/policy-wasm.test.ts) both run every vector, so the CLI preview and the server decision cannot drift. Edit by hand; the example policy must stay identical to examples/policy.yaml.",
+  "policies": {
+    "example": "# Demo policy for Wayglass. Copy to .wayglass/policy.yaml (wayglass init does\n# this for you). Rules are checked top to bottom; the first enforcing rule that\n# matches decides.\n#\n# Trying a new rule: add `mode: shadow` (the default is `mode: enforce`). A\n# shadow rule never decides; every decision records the shadow rules that\n# matched and whether the first of them would have changed the action. Run\n# `wayglass policy test` to replay recent commits through this file, then drop\n# `mode: shadow` once the rule does what you expect. Example:\n#   - { when: { area: web, data_class: pii }, action: quarantine, reason: \"Trial: all PII review.\", mode: shadow }\nversion: 1\nclassify:\n  area:\n    docs: [\"docs/**\", \"**/*.md\"]\n    web: [\"web/**\"]\n    auth: [\"**/auth/**\", \"**/login*\"]\n    infra: [\"worker/wrangler.jsonc\", \".github/**\"]\n  data_class:\n    # Secrets: any added line that looks like a credential, or any file that\n    # usually holds one. Regexes are RE2 (no lookaround), matched one added\n    # line at a time; evidence records the pattern and the line number, never\n    # the matched text. Cloudflare API tokens have no fixed prefix, so they\n    # are not listed; name the variable (api_key) and the first pattern finds it.\n    secrets:\n      content:\n        - \"(?i)api[_-]?key\"\n        - \"art_v[0-9]+_([a-z]+_)?[0-9a-f]{40}\"                            # Artifacts repo token\n        - \"-----BEGIN [A-Z ]*PRIVATE KEY-----\"                            # PEM private key (RSA, EC, OPENSSH, ...)\n        - \"\\\\b(A3T[A-Z0-9]|AKIA|ASIA)[A-Z0-9]{16}\\\\b\"                     # AWS access key id\n        - \"\\\\bgh[pousr]_[A-Za-z0-9]{36,}\"                                 # GitHub token\n        - \"\\\\bgithub_pat_[A-Za-z0-9_]{22,}\"                               # GitHub fine-grained token\n        - \"\\\\bsk-ant-[A-Za-z0-9_-]{20,}\"                                  # Anthropic API key\n        - \"\\\\bsk-(proj-|svcacct-|admin-)?[A-Za-z0-9_]{8}[A-Za-z0-9_-]{12,}\" # OpenAI API key (sk-ant- has a dash in the first eight, so it is the line above)\n        - \"\\\\bxox[baprs]-[A-Za-z0-9-]{10,}\"                               # Slack token\n        - \"\\\\b[sr]k_live_[A-Za-z0-9]{20,}\"                                # Stripe live key\n        - \"\\\\bAIza[0-9A-Za-z_-]{35}\"                                      # Google API key\n      # Files that hold keys, whatever their lines say (a binary file has no\n      # lines to scan). Globs cannot exclude a name, so the env files are\n      # listed one by one: .env.example and .env.sample are templates and stay\n      # out; add the names your project uses.\n      paths:\n        - \"**/*.pem\"\n        - \"**/*.p12\"\n        - \"**/*.pfx\"\n        - \"**/*.key\"\n        - \"**/id_rsa\"\n        - \"**/id_ed25519\"\n        - \"**/.env\"\n        - \"**/.env.{local,development,dev,production,prod,staging,stage,test,ci}\"\n    pii: { content: [\"(?i)\\\\bssn\\\\b\", \"(?i)date_of_birth\"] }\n  risk:\n    high: { lines_changed_over: 400, binary_bytes_over: 250000 }\n# Binary files cannot be content-scanned. Any binary file outside this list\n# goes to a person (builtin:unscanned-binary); this list is the default when\n# the key is absent, and `allow: []` sends every binary file to a person.\nbinary:\n  allow: [\"**/*.png\", \"**/*.jpg\", \"**/*.jpeg\", \"**/*.gif\", \"**/*.webp\", \"**/*.ico\", \"**/*.woff\", \"**/*.woff2\"]\nrules:\n  - { when: { data_class: secrets }, action: block, reason: \"Secrets never land.\" }\n  - { when: { area: infra }, action: multi_approve, approvers: 2, reason: \"Infra changes affect everyone.\" }\n  - { when: { area: auth }, action: human_approve, reason: \"Auth is a security boundary.\" }\n  - { when: { jurisdiction: eu, data_class: pii }, action: quarantine, reason: \"EU personal data needs DPO review.\" }  # fires on the eu demo namespace\n  - { when: { only_area: docs, risk: low }, action: auto_merge, reason: \"Routine docs change; every file is docs.\" }\n  - { when: { risk: low }, action: agent_review, reason: \"Low risk; second agent checks intent vs diff.\" }\ndefault: { action: human_approve, reason: \"No rule matched; a person decides.\" }\n",
+    "shadow": "version: 1\nclassify:\n  area:\n    docs: [\"docs/**\"]\n    web: [\"web/**\"]\n    auth: [\"**/auth/**\"]\nrules:\n  - { name: strict-docs, when: { area: docs }, action: human_approve, reason: \"Trying stricter docs review.\", mode: shadow }\n  - { name: block-web, when: { area: web }, action: block, reason: \"Trial web freeze.\", shadow: true }\n  - { name: docs, when: { area: docs }, action: auto_merge, reason: \"Routine docs change.\" }\n  - { name: auth-agrees, when: { area: auth }, action: human_approve, reason: \"Same as the enforced auth rule.\", mode: shadow }\n  - { name: auth, when: { area: auth }, action: human_approve, reason: \"Auth is a security boundary.\", mode: enforce }\n  - { name: late-docs, when: { area: docs }, action: block, reason: \"Comes after the deciding rule.\", mode: shadow }\ndefault: { action: agent_review, reason: \"Fallback.\" }\n",
+    "open": "version: 1\nclassify:\n  area:\n    config: [\".wayglass/**\"]\n    docs: [\"docs/**\"]\nrules:\n  - { name: anything-goes, when: { risk: low }, action: auto_merge, reason: \"Demo: everything auto-merges.\" }\ndefault: { action: auto_merge, reason: \"Demo: everything auto-merges.\" }\n",
+    "invalid": "version: 1\nrules:\n  - { whne: { area: docs }, action: auto_merge, reason: r }\n",
+    "only": "version: 1\nclassify:\n  area:\n    docs: [\"docs/**\", \"**/*.md\"]\n    tests: [\"**/*_test.go\"]\n    app: [\"internal/**\"]\nrules:\n  - { name: docs-only, when: { only_area: docs }, action: auto_merge, reason: \"Every file is docs.\" }\n  - { name: tests-only, when: { only_area: tests }, action: agent_review, reason: \"Every file is a test.\" }\ndefault: { action: human_approve, reason: \"A person decides.\" }\n",
+    "family": "version: 1\nclassify:\n  area:\n    tests: [\"**/*_test.go\"]\nrules:\n  - { name: tests-cross-review, when: { only_area: tests }, action: agent_review, reviewer: { different_family: true }, reason: \"Tests only; a reviewer from another model family checks them.\" }\ndefault: { action: human_approve, reason: \"A person decides.\" }\n",
+    "two-docs": "version: 1\nrules: []\n---\nrules:\n  - { when: { risk: low }, action: auto_merge, reason: r }\n",
+    "bad-action": "version: 1\nrules:\n  - { when: { risk: low }, action: approve, reason: r }\n",
+    "dup-key": "version: 1\ndefault: { action: block, reason: r }\ndefault: { action: auto_merge, reason: r }\n",
+    "multi": "version: 1\nclassify:\n  area: { infra: [\".github/**\"] }\nrules:\n  - { when: { area: infra }, action: multi_approve, reason: \"Infra needs two.\" }\n",
+    "ai": "version: 1\nclassify:\n  area:\n    tests: [\"**/*_test.go\"]\n    docs: [\"docs/**\"]\n    web: [\"web/**\"]\nrules:\n  - { name: tests-ai, when: { only_area: tests }, action: agent_review, reviewer: ai, ai: { min_confidence: 0.8, model: \"@cf/meta/llama-4-scout-17b-16e-instruct\" }, reason: \"Tests only; the AI reviewer decides, confidently.\" }\n  - { name: docs-agent, when: { only_area: docs }, action: agent_review, reviewer: { kind: agent, different_family: true }, reason: \"Docs get a reviewer agent from another family.\" }\n  - { name: web-advised, when: { area: web }, action: human_approve, ai: { advise: true, model: \"anthropic/claude-sonnet-5.5\" }, reason: \"A person decides, with AI advice.\" }\ndefault: { action: human_approve, ai: { advise: true }, reason: \"A person decides, with AI advice.\" }\n",
+    "no-binary": "version: 1\nclassify:\n  area:\n    docs: [\"docs/**\"]\nbinary: { allow: [] }\nrules:\n  - { name: docs, when: { area: docs }, action: auto_merge, reason: \"Routine docs change.\" }\ndefault: { action: human_approve, reason: \"A person decides.\" }\n",
+    "assets": "version: 1\nclassify:\n  area:\n    web: [\"web/**\"]\nbinary:\n  allow: [\"web/assets/**/*.png\"]\nrules:\n  - { name: web, when: { area: web }, action: agent_review, reason: \"An agent checks web changes.\" }\ndefault: { action: human_approve, reason: \"A person decides.\" }\n"
+  },
+  "vectors": [
+    {
+      "name": "docs change auto-merges",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/usage.md",
+            "added_lines": [
+              "new line"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "large docs change falls to default",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/big.md",
+            "added_lines": [
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "default",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "high",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "removed lines count toward risk",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/big.md",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 400
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "default",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "high",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "pii in the eu namespace is quarantined",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "web/profile.ts",
+            "added_lines": [
+              "save({ date_of_birth: dob })"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "eu"
+      },
+      "expect": {
+        "action": "quarantine",
+        "matched_rule": "rules[3]",
+        "areas": [
+          "web"
+        ],
+        "data_classes": [
+          "pii"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "pii in the us namespace is agent reviewed",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "web/profile.ts",
+            "added_lines": [
+              "save({ date_of_birth: dob })"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "agent_review",
+        "matched_rule": "rules[5]",
+        "areas": [
+          "web"
+        ],
+        "data_classes": [
+          "pii"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "jurisdiction is case-insensitive",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "web/profile.ts",
+            "added_lines": [
+              "u.ssn = x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "EU"
+      },
+      "expect": {
+        "action": "quarantine",
+        "matched_rule": "rules[3]",
+        "areas": [
+          "web"
+        ],
+        "data_classes": [
+          "pii"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "auth change routes to a human",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "web/login.ts",
+            "added_lines": [
+              "if (ok) {}"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "rules[2]",
+        "areas": [
+          "auth",
+          "web"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "infra needs two approvers",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": ".github/workflows/ci.yml",
+            "added_lines": [
+              "on: push"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "multi_approve",
+        "matched_rule": "rules[1]",
+        "approvers": 2,
+        "areas": [
+          "infra"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false
+      }
+    },
+    {
+      "name": "secret token blocks even in docs",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/setup.md",
+            "added_lines": [
+              "export TOKEN=art_v1_a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "RE2 case-insensitive regex matches api key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "worker/src/env.ts",
+            "added_lines": [
+              "const ApiKey = env.X"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "removed secret lines are not inspected",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "internal/x.go",
+            "added_lines": [
+              "package x"
+            ],
+            "removed_count": 3
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "agent_review",
+        "matched_rule": "rules[5]",
+        "areas": [],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "an allowlisted binary file is tagged by path only",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/diagram.png",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "unscanned": [
+          "docs/diagram.png"
+        ]
+      }
+    },
+    {
+      "name": "a binary file outside binary.allow goes to a person",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/diagram.bin",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true,
+            "bytes": 4096
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:unscanned-binary",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "overrode": "rules[4]",
+        "unscanned": [
+          "docs/diagram.bin"
+        ]
+      }
+    },
+    {
+      "name": "a secret behind a NUL byte cannot be scanned, so a person decides",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/notes.txt",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true,
+            "bytes": 120
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:unscanned-binary",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "overrode": "rules[4]",
+        "unscanned": [
+          "docs/notes.txt"
+        ]
+      }
+    },
+    {
+      "name": "a text file renamed to a binary one is unscanned",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "notes.md",
+            "added_lines": [],
+            "removed_count": 3
+          },
+          {
+            "path": "notes.dat",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true,
+            "bytes": 90
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:unscanned-binary",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "overrode": "rules[5]",
+        "unscanned": [
+          "notes.dat"
+        ]
+      }
+    },
+    {
+      "name": "a block is not lowered by an unscanned binary",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "a.go",
+            "added_lines": [
+              "const apiKey = 1"
+            ],
+            "removed_count": 0
+          },
+          {
+            "path": "payload.bin",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "unscanned": [
+          "payload.bin"
+        ]
+      }
+    },
+    {
+      "name": "a quarantine is not lowered by an unscanned binary",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "web/x.ts",
+            "added_lines": [
+              "const ssn = 1"
+            ],
+            "removed_count": 0
+          },
+          {
+            "path": "web/blob.bin",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true
+          }
+        ],
+        "jurisdiction": "eu"
+      },
+      "expect": {
+        "action": "quarantine",
+        "matched_rule": "rules[3]",
+        "areas": [
+          "web"
+        ],
+        "data_classes": [
+          "pii"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "unscanned": [
+          "web/blob.bin"
+        ]
+      }
+    },
+    {
+      "name": "a large allowlisted image is high risk, not low",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/big.png",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true,
+            "bytes": 300000
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "default",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "high",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "unscanned": [
+          "docs/big.png"
+        ]
+      }
+    },
+    {
+      "name": "a deleted binary is not unscanned",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/old.bin",
+            "added_lines": [],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "binary.allow: [] sends every binary file to a person",
+      "policy": "no-binary",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/a.png",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true,
+            "bytes": 10
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:unscanned-binary",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "overrode": "docs",
+        "unscanned": [
+          "docs/a.png"
+        ]
+      }
+    },
+    {
+      "name": "binary.allow can pin assets to their directory",
+      "policy": "assets",
+      "request": {
+        "changes": [
+          {
+            "path": "web/assets/logo.png",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true,
+            "bytes": 10
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "agent_review",
+        "matched_rule": "web",
+        "areas": [
+          "web"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "unscanned": [
+          "web/assets/logo.png"
+        ]
+      }
+    },
+    {
+      "name": "binary.allow does not cover the same type elsewhere",
+      "policy": "assets",
+      "request": {
+        "changes": [
+          {
+            "path": "web/logo.png",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true,
+            "bytes": 10
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:unscanned-binary",
+        "areas": [
+          "web"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "overrode": "web",
+        "unscanned": [
+          "web/logo.png"
+        ]
+      }
+    },
+    {
+      "name": "no policy and an unscanned binary is one human_approve",
+      "policy": null,
+      "request": {
+        "changes": [
+          {
+            "path": "x.bin",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:no-policy",
+        "areas": [],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "unscanned": [
+          "x.bin"
+        ]
+      }
+    },
+    {
+      "name": "policy file edit routes to a human",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": ".wayglass/policy.yaml",
+            "added_lines": [
+              "default: { action: auto_merge, reason: x }"
+            ],
+            "removed_count": 1
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:protect-policy",
+        "areas": [],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "overrode": "rules[5]",
+        "approvers": 0
+      }
+    },
+    {
+      "name": "policy guard cannot be relaxed by the policy itself",
+      "policy": "open",
+      "request": {
+        "changes": [
+          {
+            "path": ".wayglass/policy.yaml",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:protect-policy",
+        "areas": [
+          "config"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "overrode": "anything-goes",
+        "approvers": 0
+      }
+    },
+    {
+      "name": "policy guard keeps a stricter rule",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": ".wayglass/policy.yaml",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          },
+          {
+            "path": ".github/ci.yml",
+            "added_lines": [
+              "y"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "multi_approve",
+        "matched_rule": "rules[1]",
+        "approvers": 2,
+        "areas": [
+          "infra"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false
+      }
+    },
+    {
+      "name": "no policy at the base commit goes to a human",
+      "policy": null,
+      "request": {
+        "changes": [
+          {
+            "path": "docs/a.md",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:no-policy",
+        "areas": [],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "invalid policy at the base commit goes to a human",
+      "policy": "invalid",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/a.md",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:invalid-policy",
+        "areas": [],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "truncated diff goes to a human",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/a.md",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us",
+        "truncated": true
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:diff-truncated",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "overrode": "rules[4]",
+        "approvers": 0
+      }
+    },
+    {
+      "name": "shadow rules are logged, enforcing rule decides",
+      "policy": "shadow",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/a.md",
+            "added_lines": [],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "docs",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [
+          "strict-docs",
+          "late-docs"
+        ],
+        "would_differ": true,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "shadow before default is logged",
+      "policy": "shadow",
+      "request": {
+        "changes": [
+          {
+            "path": "web/x.html",
+            "added_lines": [],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "agent_review",
+        "matched_rule": "default",
+        "areas": [
+          "web"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [
+          "block-web"
+        ],
+        "would_differ": true,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "shadow rule that agrees does not differ",
+      "policy": "shadow",
+      "request": {
+        "changes": [
+          {
+            "path": "internal/auth/a.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "auth",
+        "areas": [
+          "auth"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [
+          "auth-agrees"
+        ],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "only_area: docs-only change auto-merges",
+      "policy": "only",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/a.md",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          },
+          {
+            "path": "README.md",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "docs-only",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "only_area: docs plus code is not docs-only",
+      "policy": "only",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/a.md",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          },
+          {
+            "path": "internal/shop/cart.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "default",
+        "areas": [
+          "app",
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "only_area: tests-only change gets an agent review",
+      "policy": "only",
+      "request": {
+        "changes": [
+          {
+            "path": "internal/shop/cart_test.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "agent_review",
+        "matched_rule": "tests-only",
+        "areas": [
+          "app",
+          "tests"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "reviewer: different_family travels with the decision",
+      "policy": "family",
+      "request": {
+        "changes": [
+          {
+            "path": "a_test.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "agent_review",
+        "matched_rule": "tests-cross-review",
+        "areas": [
+          "tests"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "reviewer_different_family": true
+      }
+    },
+    {
+      "name": "reviewer: a built-in guard's floor replaces the rule's reviewer",
+      "policy": "family",
+      "request": {
+        "changes": [
+          {
+            "path": ".wayglass/x_test.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:protect-policy",
+        "areas": [
+          "tests"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "overrode": "tests-cross-review"
+      }
+    },
+    {
+      "name": "backslash separators in a path are read as slashes",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "web\\auth\\login.ts",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "rules[2]",
+        "areas": [
+          "auth",
+          "web"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "a leading ./ on a path is ignored",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "./docs/a.md",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "dotfiles are not hidden from globs",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/.notes.md",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "globs are case-sensitive: Auth is not auth",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "internal/Auth/token.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "agent_review",
+        "matched_rule": "rules[5]",
+        "areas": [],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "a renamed file is scanned as a fresh add",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "old.go",
+            "added_lines": [],
+            "removed_count": 2
+          },
+          {
+            "path": "new.go",
+            "added_lines": [
+              "t := \"art_v1_abababababababababababababababababababab\""
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "a block is not lowered by a truncated diff",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "a.go",
+            "added_lines": [
+              "const apiKey = 1"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us",
+        "truncated": true
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "a policy with two YAML documents is invalid",
+      "policy": "two-docs",
+      "request": {
+        "changes": [
+          {
+            "path": "a.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:invalid-policy",
+        "areas": [],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "a policy with an unknown action is invalid",
+      "policy": "bad-action",
+      "request": {
+        "changes": [
+          {
+            "path": "a.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:invalid-policy",
+        "areas": [],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "a policy with a duplicate key is invalid",
+      "policy": "dup-key",
+      "request": {
+        "changes": [
+          {
+            "path": "a.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:invalid-policy",
+        "areas": [],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "multi_approve approvers default to two",
+      "policy": "multi",
+      "request": {
+        "changes": [
+          {
+            "path": ".github/workflows/ci.yml",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "multi_approve",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "infra"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 2
+      }
+    },
+    {
+      "name": "secrets: PEM private key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/setup.md",
+            "added_lines": [
+              "-----BEGIN RSA PRIVATE KEY-----"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: PEM private key without an algorithm",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "config/tls.go",
+            "added_lines": [
+              "-----BEGIN PRIVATE KEY-----"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: OpenSSH private key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/ssh.md",
+            "added_lines": [
+              "-----BEGIN OPENSSH PRIVATE KEY-----"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: AWS access key id",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/aws.md",
+            "added_lines": [
+              "aws_access_key_id = AKIAIOSFODNN7EXAMPLE"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: AWS temporary access key id",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/aws.md",
+            "added_lines": [
+              "ASIAIOSFODNN7EXAMPLE"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: GitHub token",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/ci.md",
+            "added_lines": [
+              "token: ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef0123"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: GitHub fine-grained token",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/ci.md",
+            "added_lines": [
+              "github_pat_11ABCDEFG0123456789_abcdefghijklmnopqrstuvwxyz"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: Anthropic key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/llm.md",
+            "added_lines": [
+              "ANTHROPIC=sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: OpenAI project key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/llm.md",
+            "added_lines": [
+              "OPENAI=sk-proj-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: OpenAI legacy key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/llm.md",
+            "added_lines": [
+              "sk-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKL"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: Slack bot token",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/slack.md",
+            "added_lines": [
+              "xoxb-1234567890-abcdefghij"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: Stripe live secret key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/billing.md",
+            "added_lines": [
+              "sk_live_abcdefghijklmnopqrst"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: Stripe live restricted key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/billing.md",
+            "added_lines": [
+              "rk_live_abcdefghijklmnopqrst"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: Google API key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/maps.md",
+            "added_lines": [
+              "AIzaSyA-abcdefghijklmnopqrstuvwxyz01234567"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: a .pem file by path",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "certs/server.pem",
+            "added_lines": [
+              "not a key at all"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: a .p12 bundle by path, binary",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "certs/client.p12",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "unscanned": [
+          "certs/client.p12"
+        ]
+      }
+    },
+    {
+      "name": "secrets: a .pfx bundle by path, binary",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "certs/client.pfx",
+            "added_lines": [],
+            "removed_count": 0,
+            "binary": true
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "unscanned": [
+          "certs/client.pfx"
+        ]
+      }
+    },
+    {
+      "name": "secrets: a .key file by path",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "tls/server.key",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: id_rsa by path",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "home/.ssh/id_rsa",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: id_ed25519 by path",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "deploy/id_ed25519",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: .env by path",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": ".env",
+            "added_lines": [
+              "PORT=3000"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: .env.local by path",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "web/.env.local",
+            "added_lines": [
+              "PORT=3000"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [
+          "web"
+        ],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: .env.production by path",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": ".env.production",
+            "added_lines": [
+              "PORT=3000"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "block",
+        "matched_rule": "rules[0]",
+        "areas": [],
+        "data_classes": [
+          "secrets"
+        ],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: task-ant is not an Anthropic key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/plan.md",
+            "added_lines": [
+              "task-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: AKIA in prose is not an access key id",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/aws.md",
+            "added_lines": [
+              "AKIA is the prefix of an access key id"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: a certificate is not a private key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/tls.md",
+            "added_lines": [
+              "-----BEGIN CERTIFICATE-----"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: a public key is not a private key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/tls.md",
+            "added_lines": [
+              "-----BEGIN PUBLIC KEY-----"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: a Slovak locale is not an OpenAI key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/i18n.md",
+            "added_lines": [
+              "locale sk-SK, see desk-top"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: a Stripe test key is not a live key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/billing.md",
+            "added_lines": [
+              "sk_test_abcdefghijklmnopqrstuvwxyz"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: a short ghp_ fragment is not a token",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/ci.md",
+            "added_lines": [
+              "prefix ghp_ then 36 characters"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: a short xox fragment is not a token",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/slack.md",
+            "added_lines": [
+              "xoxp-123"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: a short AIza fragment is not a key",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/maps.md",
+            "added_lines": [
+              "AIzaShort"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "auto_merge",
+        "matched_rule": "rules[4]",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "secrets: .env.example is a template, not a secret",
+      "policy": "example",
+      "request": {
+        "changes": [
+          {
+            "path": ".env.example",
+            "added_lines": [
+              "PORT=3000"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "agent_review",
+        "matched_rule": "rules[5]",
+        "areas": [],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0
+      }
+    },
+    {
+      "name": "reviewer: ai with min_confidence and a pinned model travels with the decision",
+      "policy": "ai",
+      "request": {
+        "changes": [
+          {
+            "path": "a_test.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "agent_review",
+        "matched_rule": "tests-ai",
+        "areas": [
+          "tests"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "reviewer_kind": "ai",
+        "ai": {
+          "min_confidence": 0.8,
+          "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
+        }
+      }
+    },
+    {
+      "name": "reviewer: agent with different_family travels with the decision",
+      "policy": "ai",
+      "request": {
+        "changes": [
+          {
+            "path": "docs/a.md",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "agent_review",
+        "matched_rule": "docs-agent",
+        "areas": [
+          "docs"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "reviewer_different_family": true,
+        "reviewer_kind": "agent"
+      }
+    },
+    {
+      "name": "ai: advise on a rule routed to a person",
+      "policy": "ai",
+      "request": {
+        "changes": [
+          {
+            "path": "web/a.ts",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "web-advised",
+        "areas": [
+          "web"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "ai": {
+          "model": "anthropic/claude-sonnet-5.5",
+          "advise": true
+        }
+      }
+    },
+    {
+      "name": "ai: advise on the default",
+      "policy": "ai",
+      "request": {
+        "changes": [
+          {
+            "path": "other.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "default",
+        "areas": [],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "ai": {
+          "advise": true
+        }
+      }
+    },
+    {
+      "name": "ai: a built-in guard's floor drops the rule's AI settings",
+      "policy": "ai",
+      "request": {
+        "changes": [
+          {
+            "path": ".wayglass/a_test.go",
+            "added_lines": [
+              "x"
+            ],
+            "removed_count": 0
+          }
+        ],
+        "jurisdiction": "us"
+      },
+      "expect": {
+        "action": "human_approve",
+        "matched_rule": "builtin:protect-policy",
+        "areas": [
+          "tests"
+        ],
+        "data_classes": [],
+        "risk": "low",
+        "shadow_matches": [],
+        "would_differ": false,
+        "approvers": 0,
+        "overrode": "tests-ai"
+      }
+    }
+  ]
+}

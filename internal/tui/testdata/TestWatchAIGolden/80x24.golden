@@ -1,0 +1,24 @@
+ ◆ wayglass  watch  │ acme-web │ US · EU                           SAMPLE DATA  
+ agents 7 open 5 of 8 overlaps 1 last 42s ago saved ≈45m est. ai 1✓ 1▲ 1adv     
+╭─ Intents 8 · 5 open ─────────────────────────────────────────────────────────╮
+│   ID       AGENT      GOAL                               DECL/PSH  STATUS    │
+│ ▸ i3f2a91  claude-1   Add rate limiting to login         ⇄ 2/2     proposed  │
+│   i0c9d8e  claude-2   Store date of birth at signup      2/2       proposed  │
+│   i7b4e0d  codex-2    Pin Worker compatibility date      1/1       proposed  │
+│   i5a6b7c  claude-3   Refactor session cookie handling   ⇄ 2/0     open      │
+│   i4c5d6e  claude-4   Retry failed metrics uploads       1/1       proposed  │
+│   i1a2b3c  codex-1    Document the session API           1/1       landed    │
+╰─────────────────────────────────────────────────────────────────── 1–6 of 8 ─╯
+╭─ Changes 7 · ▲ 4 wait for a person ──────────────────────────────────────────╮
+│ INTENT   AREA·DATA·RISK·JUR    ACTION        RULE            STATUS          │
+│ i4c5d6e  web·-·low·US          human         low-risk-agen…  ▲ AI escalated  │
+│ i7b4e0d  infra·-·low·US        multi         infra-two-peo…  ▲ needs you 1/2 │
+│ i0c9d8e  web·pii·low·EU        quarantine    eu-pii-quaran…  ▲ quarantined   │
+│ i3f2a91  auth,web·-·low·US     human         auth-needs-hu…  ▲ needs you     │
+│ i2b3c4d  web·-·low·US          agent review  low-risk-agen…  landed ·AI      │
+╰───────────────────────────────────────────────────────────────────── 5 of 7 ─╯
+ ⇄ i3f2a91 ↔ i5a6b7c  web/login.ts  → land i3f2a91 first, i5a6b7c lands after it
+╭─ Activity 38 ────────────────────────────────────────────────────────────────╮
+│ 09:00:18  workers-ai:@c…  i3f2a91 AI advice: Limits login attempts per clie… │
+╰──────────────────────────────────────────────────────────────────────────────╯
+ ↑/k up · ↓/j down · enter intent details · ? keys · q quit    updated 09:01:00 

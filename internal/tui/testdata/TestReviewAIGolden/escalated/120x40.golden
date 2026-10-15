@@ -1,0 +1,40 @@
+ ◆ wayglass  review  │ acme-web │ ▲ 4 waiting for a person │ US · EU                          SAMPLE DATA   --demo-data 
+╭─ Queue 4 ──────────────────────────╮╭─ Intent i4c5d6e7f8a ───────────────────────────────────────────────────────────╮
+│   i3f2a91  approve ·advised        ││ Retry failed metrics uploads                                                   │
+│   Add rate limiting to login       ││ by claude-4 · fork acme-web--i4c5d6e7f8a · declared 09:00:15                   │
+│                                    ││ Why: Dashboards show gaps when the collector restarts.                         │
+│   i0c9d8e  quarantine              │╰────────────────────────────────────────────────────────────────────────────────╯
+│   Store date of birth at signup    │╭─ Policy human ─────────────────────────────────────────────────────────────────╮
+│                                    ││ rule      low-risk-agent-review → human                                        │
+│   i7b4e0d  multi-approve 1/2       ││ reason    Low risk; a second agent checks intent vs diff.                      │
+│   Pin Worker compatibility date    ││ status    ▲ AI escalated                                                       │
+│                                    ││ ◆ Escalated by AI reviewer (@cf/meta/llama-4-scout-17b-16e-instruct): The      │
+│ ▸ i4c5d6e  AI escalated            ││ change adds a call to a host the goal does not mention (metrics.example.net)   │
+│   Retry failed metrics uploads     ││ and retries without an upper bound.                                            │
+│                                    ││   • new outbound host metrics.example.net                                      │
+│                                    ││   • retry loop has no limit                                                    │
+│                                    ││   was agent review; a person decides it now                                    │
+│                                    │╰────────────────────────────────────────────────────────────────────────────────╯
+│                                    │╭─ Tags ─────────────────────────────────────────────────────────────────────────╮
+│                                    ││ AREA                DATA CLASS          RISK                JURISDICTION       │
+│                                    ││ web                 -                   low                 US                 │
+│                                    ││                                                                                │
+│                                    ││ · area web ← web/metrics.ts matched web/**                                     │
+│                                    ││ · jurisdiction us: namespace jurisdiction                                      │
+│                                    │╰────────────────────────────────────────────────────────────────────────────────╯
+│                                    │╭─ Paths 1 file(s) +12 -1 ───────────────────────────────────────────────────────╮
+│                                    ││ declared web/metrics.ts                                                        │
+│                                    ││ web/metrics.ts                                                     +12    -1   │
+│                                    ││ commit 4c5d6e7                                                                 │
+│                                    │╰────────────────────────────────────────────────────────────────────────────────╯
+│                                    │╭─ Overlaps 0 ───────────────────────────────────────────────────────────────────╮
+│                                    ││ none: no other open intent declared or touched these paths                     │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+│                                    ││                                                                                │
+╰────────────────────────────────────╯╰────────────────────────────────────────────────────────────────────────────────╯
+ ↑/k up · ↓/j down · a approve · x reject · i ask AI · tab show all · pgdn scroll down · ? keys · q …  updated 09:01:00 

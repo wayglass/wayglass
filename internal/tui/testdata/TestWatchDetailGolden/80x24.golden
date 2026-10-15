@@ -1,0 +1,24 @@
+ ◆ wayglass  watch  │ acme-web │ US · EU                           SAMPLE DATA  
+ agents 5 · open 4 of 6 · overlaps 1 · last 48s ago · saved ≈30m est.           
+╭─ Intent i3f2a91c0d1 ─────────────────────────────────────────────────────────╮
+│ Add rate limiting to login                                                   │
+│ claude-1 · proposed · fork acme-web--i3f2a91c0d1 · declared 09:00:00 · juri… │
+│ Why: Credential stuffing spikes seen in last week's logs.                    │
+│                                                                              │
+│ PATHS  declared against pushed                                               │
+│ PATH                                        DECLARED  PUSHED     NOTE        │
+│ web/login.ts                                yes       yes        ⇄ overlap   │
+│ web/middleware/**                           yes       1 file(s)              │
+│ web/middleware/ratelimit.ts                 via glob  yes                    │
+│                                                                              │
+│ CHANGE  tags as classified                                                   │
+│ area auth,web · data class - · risk low · jurisdiction US                    │
+│ human by rule auth-needs-human · ▲ needs a person                            │
+│ Rule's reason: Auth is a security boundary.                                  │
+│ 2 file(s) +82 -4                                                             │
+│                                                                              │
+│ OVERLAPS                                                                     │
+│ ⇄ i5a6b7c8d90 (claude-3: Refactor session cookie handling)                   │
+│   on web/login.ts                                                            │
+╰────────────────────────────────────────────────────────────── ↓ more · pgdn ─╯
+ ↓ more  esc back · ↑/k up · ↓/j down · pgdn scroll down · ?…  updated 09:01:00 

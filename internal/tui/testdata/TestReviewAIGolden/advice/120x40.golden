@@ -1,0 +1,40 @@
+ ◆ wayglass  review  │ acme-web │ ▲ 4 waiting for a person │ US · EU                          SAMPLE DATA   --demo-data 
+╭─ Queue 4 ──────────────────────────╮╭─ Intent i3f2a91c0d1 ───────────────────────────────────────────────────────────╮
+│ ▸ i3f2a91  approve ·advised        ││ Add rate limiting to login                                                     │
+│   Add rate limiting to login       ││ by claude-1 · fork acme-web--i3f2a91c0d1 · declared 09:00:00                   │
+│                                    ││ Why: Credential stuffing spikes seen in last week's logs.                      │
+│   i0c9d8e  quarantine              │╰────────────────────────────────────────────────────────────────────────────────╯
+│   Store date of birth at signup    │╭─ Policy human ─────────────────────────────────────────────────────────────────╮
+│                                    ││ rule      auth-needs-human → human                                             │
+│   i7b4e0d  multi-approve 1/2       ││ reason    Auth is a security boundary.                                         │
+│   Pin Worker compatibility date    ││ status    ▲ needs a person                                                     │
+│                                    │╰────────────────────────────────────────────────────────────────────────────────╯
+│   i4c5d6e  AI escalated            │╭─ AI advice ◆ advisory ─────────────────────────────────────────────────────────╮
+│   Retry failed metrics uploads     ││ Limits login attempts per client address in a 60-second window; the lockout is │
+│                                    ││ per address, not per account.                                                  │
+│                                    ││                                                                                │
+│                                    ││ Risks                                                                          │
+│                                    ││ • Shared office or carrier NAT addresses reach the limit together              │
+│                                    ││                                                                                │
+│                                    ││ Concerns                                                                       │
+│                                    ││ • No test covers the window reset                                              │
+│                                    ││                                                                                │
+│                                    ││ Questions                                                                      │
+│                                    ││ • Should failed attempts also count per account?                               │
+│                                    ││                                                                                │
+│                                    ││ Advice only, from AI reviewer (@cf/meta/llama-4-scout-17b-16e-instruct): the   │
+│                                    ││ decision and its reason are yours.                                             │
+│                                    │╰────────────────────────────────────────────────────────────────────────────────╯
+│                                    │╭─ Tags ─────────────────────────────────────────────────────────────────────────╮
+│                                    ││ AREA                DATA CLASS          RISK                JURISDICTION       │
+│                                    ││ auth,web            -                   low                 US                 │
+│                                    ││                                                                                │
+│                                    ││ · area auth ← web/login.ts matched **/login*                                   │
+│                                    ││ · area web ← web/login.ts matched web/**                                       │
+│                                    ││ · jurisdiction us: namespace jurisdiction                                      │
+│                                    │╰────────────────────────────────────────────────────────────────────────────────╯
+│                                    │╭─ Paths 2 file(s) +82 -4 ───────────────────────────────────────────────────────╮
+│                                    ││ declared web/login.ts, web/middleware/**                                       │
+│                                    ││ web/login.ts                                                       +18    -4   │
+╰────────────────────────────────────╯│ web/middleware/ratelimit.ts                                        +64    -0   │
+ ↓ more  ↑/k up · ↓/j down · a approve · x reject · i ask AI · tab show all · pgdn scroll down · ? k…  updated 09:01:00 

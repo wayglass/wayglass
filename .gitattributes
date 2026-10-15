@@ -1,0 +1,2 @@
+# Built by `make wasm` from internal/policy; CI checks it is current.
+worker/src/wasm/policy.wasm binary linguist-generated=true

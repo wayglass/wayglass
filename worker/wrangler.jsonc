@@ -1,0 +1,121 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wayglass",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // account_id is deliberately omitted; wrangler reads CLOUDFLARE_ACCOUNT_ID from the shell.
+  // The landing site and docs are separate Workers.
+  "routes": [{ "pattern": "api.wayglass.dev", "custom_domain": true }],
+  // Workers AI binding for the AI reviewer of agent_review changes (src/aireview.ts;
+  // docs/ARCHITECTURE.md D5, D9). The gateway is named per call from AI_GATEWAY_ID.
+  // Workers AI bills the account in neurons (docs/POLICY.md, "The AI reviewer").
+  "ai": { "binding": "AI", "remote": true },
+
+  // Artifacts binding (Wrangler 4.145.0+). The namespace must already exist:
+  // namespaces are created by hand (jurisdiction is fixed at creation). Namespaces `wayglass` (us) and `wayglass-eu` (eu) exist as of Oct 12.
+  // Artifacts has no local simulator: even `wrangler dev` talks to the real
+  // namespace (and counts toward billing). `remote: true` makes that explicit.
+  // ARTIFACTS_EU holds projects created with jurisdiction "eu" (`wayglass init
+  // --jurisdiction eu`); their changes are tagged eu, so EU-only rules such as
+  // pii -> quarantine apply. Namespace `wayglass-eu` was created with jurisdiction eu.
+  "artifacts": [
+    { "binding": "ARTIFACTS", "namespace": "wayglass", "remote": true },
+    { "binding": "ARTIFACTS_EU", "namespace": "wayglass-eu", "remote": true }
+  ],
+  // The binding cannot report its namespace's jurisdiction, so it is stated
+  // here and fed to the policy evaluator as the `jurisdiction` tag. Must match
+  // how the namespace was created ("us", "eu", or "" for unrestricted).
+  // ARTIFACTS_NAMESPACE must match the binding above (the binding cannot report
+  // it). ARTIFACTS_EVENTS_QUEUE_ID is the id of the `artifacts-events` queue
+  // (`wrangler queues info artifacts-events`); new trunks subscribe it to
+  // their pushes. Neither is secret. CF_ACCOUNT_ID and CF_EVENTS_API_TOKEN are
+  // secrets (see src/env.d.ts).
+  "vars": {
+    "ARTIFACTS_JURISDICTION": "us",
+    "ARTIFACTS_NAMESPACE": "wayglass",
+    "ARTIFACTS_EU_NAMESPACE": "wayglass-eu",
+    "ARTIFACTS_EVENTS_QUEUE_ID": "281ba3eadda84b5aab8e1fe8c3190ee9",
+    // Anonymous public reads are off on api.wayglass.dev (no
+    // unauthenticated, URL-reachable data). Self-hosters may list name
+    // patterns here (src/public.ts; trailing * is a prefix); each project must
+    // still opt in with `wayglass init --public`.
+    "PUBLIC_PROJECTS": "",
+    // Open or proposed intents with no push for this many hours are reported
+    // as stale in overlaps, intent lists and watch. Never auto-abandoned.
+    "STALE_INTENT_HOURS": "24",
+    // Cloudflare Access sign-in for people (src/access.ts, src/human.ts).
+    // Both empty: off, and /v1/human/* answers 404 access_not_configured.
+    // ACCESS_TEAM_DOMAIN is the Zero Trust team domain ("<team>.cloudflareaccess.com");
+    // ACCESS_AUD is the Access application's audience (AUD) tag. Neither is secret.
+    // Agents and their keys never go through Access.
+    "ACCESS_TEAM_DOMAIN": "tpscloud.cloudflareaccess.com",
+    "ACCESS_AUD": "45a800acbd6dde495c3b78628a68a68b22a95bc2be6bea4c3568773269f283b8",
+    // Audience tag(s) of the Access application covering the web app (/, /console/,
+    // assets, /v1/public/*); comma list. The Worker refuses those routes without a
+    // valid token for one of them (src/access.ts webAccessGate). Empty: ACCESS_AUD
+    // is used instead. All ACCESS_* empty: no gate (self-host default).
+    "ACCESS_WEB_AUD": "0041c5d882498504b6527bfb449438c32918edd244f4a64779d74c4d384f9d1d",
+    // The AI reviewer for agent_review changes (src/aireview.ts).
+    // AI_REVIEW: off (POST /v1/intents/:id/ai-review answers ai_unavailable),
+    // manual (on request: `wayglass ai-review <intent-id>`, or when a rule says
+    // `reviewer: ai`) or auto (also right after every propose that lands in
+    // agent_review, with AI advice on changes routed to a person). AI_GATEWAY_ID
+    // names the AI Gateway the calls go through ("" = direct to Workers AI);
+    // the gateway `wayglass` exists on the hosting account. Workers AI bills the
+    // account per token (neurons); the diff is capped at 60 KB per review.
+    "AI_REVIEW": "manual",
+    "AI_GATEWAY_ID": "wayglass",
+    // Which providers the reviewer may use (src/aiproviders.ts), comma list of
+    // workers-ai, anthropic, openai. The model is picked so its family is never
+    // the author's: Claude-authored changes go to Workers AI (or openai),
+    // Codex-authored ones to Claude. Third-party providers go through the
+    // gateway, which holds their keys (BYOK `default` alias) or bills Unified
+    // Billing; the Worker holds no provider key. "workers-ai" alone is the
+    // self-host default; add anthropic here once its key is the gateway's
+    // default BYOK key. AI_REVIEW_MODEL, AI_ANTHROPIC_MODEL and
+    // AI_OPENAI_MODEL override each provider's model ("" = the default in
+    // src/aiproviders.ts: Llama 4 Scout, Claude Sonnet 5.5, GPT-5.4 mini).
+    "AI_PROVIDERS": "workers-ai",
+    "AI_REVIEW_MODEL": "",
+    "AI_ANTHROPIC_MODEL": "",
+    "AI_OPENAI_MODEL": "",
+    // Per-project daily cap on AI model calls (reviews and advice together,
+    // UTC day). Over it, a review escalates to a person and advice is skipped;
+    // both are audited. Not a number: 200.
+    "AI_DAILY_REVIEWS": "200"
+  },
+
+  // One Project Durable Object per project, SQLite-backed.
+  // Uses the legacy `migrations` flow on purpose: the newer `exports` flow is
+  // one-way once deployed, so switching is a deliberate decision.
+  // One Registry Durable Object ("keys") holds the hashes of per-agent API keys.
+  "durable_objects": {
+    "bindings": [
+      { "name": "PROJECT", "class_name": "Project" },
+      { "name": "REGISTRY", "class_name": "Registry" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Project"] },
+    { "tag": "v2", "new_sqlite_classes": ["Registry"] }
+  ],
+
+  // Receives cf.artifacts.repo.pushed for every project trunk (src/events.ts).
+  // `pushed` is a per-repo event, so the Worker creates one subscription per
+  // trunk when a project is made (src/subscriptions.ts, using
+  // CF_EVENTS_API_TOKEN); there is no account-wide subscription to run by hand.
+  // Delivery is at least once: the consumer dedupes on the message id.
+  "queues": {
+    "consumers": [{ "queue": "artifacts-events", "max_batch_size": 10, "max_batch_timeout": 5 }]
+  },
+
+  // Static website. Every request runs the Worker first, so assets are served
+  // only after the Access check (src/access.ts); /v1/* is the API.
+  "assets": {
+    "directory": "../web",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+
+  "observability": { "enabled": true }
+}

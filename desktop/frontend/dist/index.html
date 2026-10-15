@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Everything is local: no remote scripts, styles or fonts. Agent text is
+       rendered with textContent only (see app.js), never as HTML. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' ws: wails:; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <title>Wayglass</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="titlebar">
+    <div class="brand">
+      <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2.5" y="5" width="12" height="14" rx="3" class="pane-a"/>
+        <rect x="9.5" y="5" width="12" height="14" rx="3" class="pane-b"/>
+      </svg>
+      <span>Wayglass</span>
+    </div>
+    <div class="project-picker">
+      <label class="sr" for="project">Project</label>
+      <select id="project" aria-label="Project"></select>
+      <button id="add-project" class="ghost icon" title="Add a project" aria-label="Add a project">+</button>
+      <button id="projects-btn" class="ghost" title="Every project this login can read" aria-haspopup="dialog" aria-controls="projects">Projects</button>
+      <form id="add-form" class="popover" hidden>
+        <label for="add-name">Project name</label>
+        <input id="add-name" autocomplete="off" spellcheck="false" placeholder="e.g. wayglass">
+        <p class="hint">The Worker must already know it ('wayglass init').</p>
+        <p class="form-error" id="add-error" role="alert"></p>
+        <div class="row">
+          <button type="button" class="ghost" id="add-cancel">Cancel</button>
+          <button type="submit" class="primary">Add</button>
+        </div>
+      </form>
+    </div>
+    <div class="spacer"></div>
+    <button id="update" class="update" hidden title="A newer Wayglass is on GitHub Releases. Opens the release page in your browser; nothing is replaced on its own."></button>
+    <div class="live" id="live" title="Polling the Worker">
+      <span class="dot"></span><span id="live-text">Connecting</span>
+    </div>
+    <div class="identity-picker">
+      <button type="button" class="identity" id="identity" title="Approvals are recorded under this name. Click to change it."></button>
+      <form id="name-form" class="popover" hidden>
+        <label for="name-input">Display name</label>
+        <input id="name-input" autocomplete="off" spellcheck="false" maxlength="128">
+        <p class="hint" id="name-hint"></p>
+        <p class="form-error" id="name-error" role="alert"></p>
+        <div class="row">
+          <button type="button" class="ghost" id="name-cancel">Cancel</button>
+          <button type="submit" class="primary">Save</button>
+        </div>
+      </form>
+    </div>
+    <button id="notify" class="ghost icon" title="Notifications" aria-label="Notifications"></button>
+    <button id="theme" class="ghost icon" title="Theme" aria-label="Theme"></button>
+  </header>
+
+  <div id="projects" class="projects" role="dialog" aria-labelledby="projects-title" hidden>
+    <div class="projects-panel panel">
+      <div class="projects-head">
+        <h2 id="projects-title">Projects</h2>
+        <span class="count" id="projects-count"></span>
+        <div class="spacer"></div>
+        <button type="button" class="ghost icon" id="projects-close" title="Close" aria-label="Close">×</button>
+      </div>
+      <label class="sr" for="projects-search">Search projects</label>
+      <input id="projects-search" type="search" autocomplete="off" spellcheck="false" maxlength="63" placeholder="Search by name">
+      <p class="hint">Every project this login can read, across namespaces. Open one to watch it; copy its clone command to check it out.</p>
+      <p class="form-error" id="projects-error" role="alert"></p>
+      <div id="projects-list" class="projects-list"></div>
+    </div>
+  </div>
+
+  <div id="gate" class="gate" hidden>
+    <div class="gate-card">
+      <svg class="glyph big" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2.5" y="5" width="12" height="14" rx="3" class="pane-a"/>
+        <rect x="9.5" y="5" width="12" height="14" rx="3" class="pane-b"/>
+      </svg>
+      <h1 id="gate-title"></h1>
+      <p id="gate-text"></p>
+      <form id="gate-form" hidden>
+        <input id="gate-name" autocomplete="off" spellcheck="false" placeholder="project name">
+        <button type="submit" class="primary">Open project</button>
+        <p class="form-error" id="gate-error" role="alert"></p>
+      </form>
+    </div>
+  </div>
+
+  <main id="main" hidden>
+    <section class="counters" id="counters" aria-label="Counters"></section>
+    <div class="error-banner" id="error-banner" role="alert" hidden></div>
+    <div class="warn-banner" id="warn-banner" role="status" hidden></div>
+
+    <div class="layout">
+      <div class="col-main">
+        <section class="section" aria-labelledby="needs-title">
+          <div class="section-head">
+            <h2 id="needs-title">Needs you</h2>
+            <span class="count" id="needs-count"></span>
+            <span class="section-note">Changes policy routed to a person. Each verdict needs a written reason.</span>
+          </div>
+          <div id="needs" class="needs"></div>
+        </section>
+
+
+        <section class="section" aria-labelledby="swarm-title">
+          <div class="section-head">
+            <h2 id="swarm-title">Swarm</h2>
+            <span class="count" id="swarm-count"></span>
+            <div class="spacer"></div>
+            <div class="seg" role="tablist" aria-label="Filter intents">
+              <button data-filter="active" class="on" role="tab">Active</button>
+              <button data-filter="all" role="tab">All</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="swarm-head">
+              <span></span><span>Intent</span><span>Agent</span><span>Area · Data · Risk · Region</span><span>Route</span><span class="r">Updated</span>
+            </div>
+            <div id="swarm"></div>
+          </div>
+        </section>
+
+        <section class="section" id="overlaps-section" aria-labelledby="overlaps-title" hidden>
+          <div class="section-head">
+            <h2 id="overlaps-title">Overlaps</h2>
+            <span class="count" id="overlaps-count"></span>
+          </div>
+          <div id="overlaps" class="overlaps"></div>
+        </section>
+      </div>
+
+      <aside class="col-side section" aria-labelledby="audit-title">
+        <div class="section-head">
+          <h2 id="audit-title">Audit</h2>
+          <span class="section-note">append-only</span>
+        </div>
+        <div class="panel timeline-panel">
+          <ol id="audit" class="timeline"></ol>
+        </div>
+      </aside>
+    </div>
+  </main>
+</body>
+</html>
