@@ -8,6 +8,9 @@
 
 Zero Trust for agentic development.
 
+See the [documentation](https://docs.wayglass.dev) for the FAQ, guides and command reference.
+Visit the [website](https://wayglass.dev) for an overview.
+
 Put coding agents to work in parallel under your policy.
 
 You direct the work and set the policy. Agents declare what they intend to change and why. Wayglass classifies each proposal and applies your rules to determine whether it can proceed, needs review, or must be held or blocked. The intent, decision, and reason are recorded in an audit log, and `wayglass why` shows them for any line of landed code.
@@ -565,6 +568,9 @@ examples/            the example policy and the Acme Shop example kit
 scripts/             selfhost.sh, and the demo harnesses under scripts/demo/
 docs/                architecture decisions, policy, self-hosting, status and run logs
 ```
+
+See the [documentation](https://docs.wayglass.dev) for the FAQ, guides and command reference.
+Visit the [website](https://wayglass.dev) for an overview.
 
 ## Development
 
