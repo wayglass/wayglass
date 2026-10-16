@@ -33,10 +33,6 @@ import { advisesOnPropose, aiAdviseIntent } from "./aiadvice";
 
 export { Project } from "./project";
 export { Registry } from "./keys";
-// The bindings name the V2 classes since migration v3 (wrangler.jsonc), which
-// dropped the original classes' storage once; same code, new class names.
-export { Project as ProjectV2 } from "./project";
-export { Registry as RegistryV2 } from "./keys";
 
 const PROJECT_NAME = /^[a-z0-9](?:[a-z0-9._]|-(?!-)){0,62}$/; // no "--": it separates project and intent in fork names
 const INTENT_ID = /^i[0-9a-f]{10}$/;

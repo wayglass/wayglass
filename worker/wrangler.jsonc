@@ -91,24 +91,22 @@
   // One Registry Durable Object ("keys") holds the hashes of per-agent API keys.
   "durable_objects": {
     "bindings": [
-      { "name": "PROJECT", "class_name": "ProjectV2" },
-      { "name": "REGISTRY", "class_name": "RegistryV2" }
+      { "name": "PROJECT", "class_name": "Project" },
+      { "name": "REGISTRY", "class_name": "Registry" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Project"] },
     { "tag": "v2", "new_sqlite_classes": ["Registry"] },
-    // v3 wiped every Durable Object once (October 2026). Deleting a class
-    // drops its objects' storage, but a class cannot be deleted while a
-    // binding names it, so the same code is exported again as ProjectV2 and
-    // RegistryV2 (src/index.ts) and the bindings moved to those names in the
-    // same deployment. Migrations are append-only, so the tag stays; a fresh
-    // deployment applies all three and ends up with empty V2 classes.
-    {
-      "tag": "v3",
-      "deleted_classes": ["Project", "Registry"],
-      "new_sqlite_classes": ["ProjectV2", "RegistryV2"]
-    }
+    // v3 and v4 wiped every Durable Object once (October 2026): deleting a
+    // class drops its objects' storage, and recreating it brings the Worker
+    // back on empty state. Cloudflare refuses to delete a class while a
+    // binding of the same name exists, so v3 was applied by hand from a copy
+    // of this file without the two bindings, and v4 with them back. A fresh
+    // deployment applies all four tags in order and ends up with empty
+    // Project and Registry classes, as it would anyway.
+    { "tag": "v3", "deleted_classes": ["Project", "Registry"] },
+    { "tag": "v4", "new_sqlite_classes": ["Project", "Registry"] }
   ],
 
   // Receives cf.artifacts.repo.pushed for every project trunk (src/events.ts).
