@@ -97,7 +97,14 @@
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Project"] },
-    { "tag": "v2", "new_sqlite_classes": ["Registry"] }
+    { "tag": "v2", "new_sqlite_classes": ["Registry"] },
+    // v3 and v4 wiped every Durable Object once (October 2026): deleting a
+    // class drops its objects' storage, and recreating it in the next tag
+    // keeps the Worker running on empty state. Migrations are append-only,
+    // so both tags stay; a fresh deployment applies them in order and ends
+    // up with empty Project and Registry classes, as it would anyway.
+    { "tag": "v3", "deleted_classes": ["Project", "Registry"] },
+    { "tag": "v4", "new_sqlite_classes": ["Project", "Registry"] }
   ],
 
   // Receives cf.artifacts.repo.pushed for every project trunk (src/events.ts).
